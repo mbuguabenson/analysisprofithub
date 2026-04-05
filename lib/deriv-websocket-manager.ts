@@ -187,13 +187,21 @@ export class DerivWebSocketManager {
           settle(() => resolve())
         })
 
-        // Route all messages through our existing routeMessage handler
-        this.api.onMessage().subscribe((message: any) => {
+        // Route all messages through our existing routeMessage handler using the RAW WebSocket event.
+        // This is more reliable than the library's subscribe() as it catches everything immediately.
+        this.ws.addEventListener('message', (event) => {
           try {
             this.lastMessageTime = Date.now()
-            this.routeMessage(message)
+            const data = JSON.parse(event.data)
+            
+            // Console trace for every message to help debug timeouts
+            if (data.msg_type) {
+              console.log(`[v0] 📥 Incoming Raw: ${data.msg_type}${data.req_id ? ` (req_id: ${data.req_id})` : ''}`)
+            }
+            
+            this.routeMessage(data)
           } catch (err) {
-            console.error("[v0] Message routing error:", err)
+            console.error("[v0] Raw message parsing/routing error:", err)
           }
         })
 
@@ -338,26 +346,55 @@ export class DerivWebSocketManager {
 
     // FALLBACK: Direct WebSocket Authorization (Legacy Path)
     try {
-      this.log("info", `Using direct WebSocket authorization for token: ${token.substring(0, 5)}...`)
+      this.log("info", `Using direct WebSocket authorization (V3) for token: ${token.substring(0, 5)}...`)
       
-      // Ensure we are connected first
-      if (!this.isConnected()) {
-        await this.connect()
+      // For legacy tokens, we MUST use the standard V3 endpoint because Options V1 only supports OTP auth.
+      // We use binaryws.com which is the most compatible endpoint for legacy tokens.
+      const v3Url = `${DERIV_API.WEBSOCKET_FALLBACK_V3}?app_id=${this.appId}`;
+      
+      // Force reconnect to V3 if we're not already on it or not connected at all
+      if (this.currentWsUrl !== v3Url || !this.isConnected()) {
+        console.log(`[v0] 🔄 Switching to V3 endpoint for legacy token: ${v3Url}`);
+        this.log("info", "Switching to compatible V3 endpoint (binaryws.com)")
+        await this.disconnect()
+        await this.connect(v3Url, true)
       }
 
-      // Send direct authorize request
-      const response = await this.sendAndWait({ authorize: token }, 15000)
+      // Send direct authorize request with a generous 30s timeout
+      this.log("info", "Sending V3 authorize request...")
+      const response = await this.sendAndWait({ authorize: token }, 30000)
       
       if (response.error) {
         throw new Error(response.error.message)
       }
 
       this.isAuthorized = true
-      this.currentAccountId = response.authorize.loginid
-      this.currentEndpoint = response.authorize.is_virtual ? "demo" : "real"
+      const auth = response.authorize
+      this.currentAccountId = auth.loginid
+      this.currentEndpoint = auth.is_virtual ? "demo" : "real"
       
-      // The router will naturally emit the 'authorize' event for use-deriv-auth
-      this.log("info", `Successfully authorized via legacy path for ${this.currentAccountId}`)
+      // Synthesize a consistent event for account syncing
+      const syntheticAuthorize = {
+        msg_type: "authorize",
+        authorize: {
+          loginid: auth.loginid,
+          is_virtual: auth.is_virtual,
+          currency: auth.currency,
+          balance: parseFloat(auth.balance || "0"),
+          email: auth.email,
+          fullname: auth.fullname,
+          landing_company_name: auth.landing_company_name,
+          account_list: auth.account_list?.map((acc: any) => ({
+            loginid: acc.loginid,
+            is_virtual: acc.is_virtual,
+            currency: acc.currency,
+            balance: parseFloat(acc.balance || "0")
+          })) || []
+        }
+      }
+      
+      this.emit("authorize", syntheticAuthorize)
+      this.log("info", `Successfully authorized via legacy V3 path for ${this.currentAccountId}`)
       
     } catch (e) {
       console.error("[v0] All authorization attempts failed:", e)
