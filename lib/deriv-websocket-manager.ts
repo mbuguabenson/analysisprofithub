@@ -307,6 +307,26 @@ export class DerivWebSocketManager {
       await this.connect(otpUrl, true)
       
       this.isAuthorized = true
+      
+      // 5. Synthesize legacy 'authorize' event from REST data to sync UI/header
+      const syntheticAuthorize = {
+        msg_type: "authorize",
+        authorize: {
+          loginid: targetAccount.account_id,
+          is_virtual: targetAccount.account_category === 'demo' ? 1 : 0,
+          currency: targetAccount.currency,
+          balance: parseFloat(targetAccount.balance || "0"),
+          landing_company_name: targetAccount.account_category,
+          account_list: accounts.map((acc: any) => ({
+            loginid: acc.account_id,
+            is_virtual: acc.account_category === 'demo' ? 1 : 0,
+            currency: acc.currency,
+            balance: parseFloat(acc.balance || "0")
+          }))
+        }
+      }
+      
+      this.emit("authorize", syntheticAuthorize)
       console.log(`[v0] Successfully authorized V1 connection for ${this.currentAccountId}`)
       
     } catch (e) {
@@ -531,6 +551,24 @@ export class DerivWebSocketManager {
       const i = handlers.indexOf(handler)
       if (i > -1) handlers.splice(i, 1)
     }
+  }
+
+  /**
+   * Internal emitter for synthesizing messages (e.g. from V1 REST handshake)
+   */
+  private emit(event: string, data: any) {
+    const handlers = this.messageHandlers.get(event) || []
+    const universalHandlers = this.messageHandlers.get("*") || []
+    
+    // Notify specific event handlers
+    handlers.forEach(h => {
+      try { h(data) } catch (e) { console.error(`[v0] Error in ${event} handler:`, e) }
+    })
+    
+    // Notify universal handlers
+    universalHandlers.forEach(h => {
+      try { h(data) } catch (e) { console.error(`[v0] Error in universal handler for ${event}:`, e) }
+    })
   }
 
   // ─── Tick subscriptions ────────────────────────────────────────────────────
