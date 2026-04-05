@@ -188,10 +188,10 @@ export class DerivWebSocketManager {
         })
 
         // Route all messages through our existing routeMessage handler
-        this.api.onMessage().subscribe(({ data }: { data: any }) => {
+        this.api.onMessage().subscribe((message: any) => {
           try {
             this.lastMessageTime = Date.now()
-            this.routeMessage(data)
+            this.routeMessage(message)
           } catch (err) {
             console.error("[v0] Message routing error:", err)
           }
@@ -464,12 +464,15 @@ export class DerivWebSocketManager {
     
     return new Promise((resolve, reject) => {
       const t = setTimeout(() => {
-        this.pendingRequests.delete(req_id)
-        reject(new Error(`Request ${req_id} timed out after ${timeoutMs}ms`))
+        if (this.pendingRequests.has(req_id)) {
+          this.pendingRequests.delete(req_id)
+          reject(new Error(`Request ${req_id} timed out after ${timeoutMs}ms`))
+        }
       }, timeoutMs)
       
       this.pendingRequests.set(req_id, (data) => {
         clearTimeout(t)
+        this.pendingRequests.delete(req_id)
         if (data.error) {
           reject(data.error)
         } else {
@@ -478,7 +481,13 @@ export class DerivWebSocketManager {
       })
       
       if (this.ws?.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify(payload))
+        try {
+          this.ws.send(JSON.stringify(payload))
+        } catch (err) {
+          clearTimeout(t)
+          this.pendingRequests.delete(req_id)
+          reject(err)
+        }
       } else {
         // Double check: if still not open after connect(), queue it
         this.messageQueue.push(payload)
