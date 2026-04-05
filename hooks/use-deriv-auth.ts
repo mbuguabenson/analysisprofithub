@@ -17,15 +17,35 @@ interface Account {
   balance: number
 }
 
+// Helper to get initial values from localStorage safely
+const getStored = (key: string, defaultValue: any) => {
+  if (typeof window === "undefined") return defaultValue
+  const saved = localStorage.getItem(key)
+  if (!saved) return defaultValue
+  try {
+    return JSON.parse(saved)
+  } catch {
+    return saved
+  }
+}
+
 export function useDerivAuth() {
-  const [token, setToken] = useState<string>("")
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [token, setToken] = useState<string>(() => getStored("deriv_api_token", ""))
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!getStored("deriv_api_token", ""))
   const [balance, setBalance] = useState<Balance | null>(null)
   const [accountType, setAccountType] = useState<"Demo" | "Real" | null>(null)
   const [accountCode, setAccountCode] = useState<string>("")
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [activeLoginId, setActiveLoginId] = useState<string | null>(null)
-  const activeLoginIdRef = useRef<string | null>(null)
+  const [accounts, setAccounts] = useState<Account[]>(() => {
+    const tokens = getStored("deriv_auth_tokens", {})
+    return Object.keys(tokens).map(id => ({
+      id,
+      type: id.startsWith("VR") ? "Demo" : "Real",
+      currency: "USD",
+      balance: 0
+    }))
+  })
+  const [activeLoginId, setActiveLoginId] = useState<string | null>(() => getStored("active_login_id", null))
+  const activeLoginIdRef = useRef<string | null>(getStored("active_login_id", null))
   const [isInitializing, setIsInitializing] = useState(true)
   const [showApprovalModal, setShowApprovalModal] = useState(false)
   const [showTokenModal, setShowTokenModal] = useState(false)
@@ -33,9 +53,15 @@ export function useDerivAuth() {
   const balanceSubscribedRef = useRef(false)
   const manager = DerivWebSocketManager.getInstance()
 
+  // Keep ref in sync immediately
+  useEffect(() => {
+    activeLoginIdRef.current = activeLoginId
+  }, [activeLoginId])
+
   // 1. Stable listener for auth and balance updates
   useEffect(() => {
     const handleAuthMessages = (data: any) => {
+      console.log("[v0] 📡 Auth hook message:", data.msg_type)
       if (data.msg_type === "authorize") {
         setIsInitializing(false)
         if (data.error) {
@@ -47,7 +73,6 @@ export function useDerivAuth() {
             setAccountCode("")
             setToken("")
 
-            // Clear invalid credentials so they aren't retried indefinitely
             localStorage.removeItem("deriv_api_token")
             localStorage.removeItem("deriv_auth_tokens")
             localStorage.removeItem("active_login_id")
@@ -58,44 +83,41 @@ export function useDerivAuth() {
         }
 
         const { authorize } = data
-        const accType = authorize.is_virtual ? "Demo" : "Real"
+        if (authorize) {
+          console.log("[v0] ✅ Authorization successful for:", authorize.loginid)
+          setIsLoggedIn(true)
+          setActiveLoginId(authorize.loginid)
+          setAccountCode(authorize.loginid)
+          setAccountType(authorize.is_virtual ? "Demo" : "Real")
 
-        console.log("[v0] ✅ Authorized:", authorize.loginid, `(${accType})`)
-        setAccountType(accType)
-        setActiveLoginId(authorize.loginid)
-        activeLoginIdRef.current = authorize.loginid
-        setAccountCode(authorize.loginid || "")
-        setIsLoggedIn(true)
-        setShowTokenModal(false)
-
-        if (authorize.balance !== undefined) {
-          const initialBalance = {
-            amount: Number(authorize.balance),
-            currency: authorize.currency || "USD",
+          if (authorize.balance !== undefined) {
+            setBalance({
+              amount: Number(authorize.balance),
+              currency: authorize.currency || "USD",
+            })
           }
-          setBalance(initialBalance)
-        }
 
-        if (authorize.account_list && Array.isArray(authorize.account_list)) {
-          const formatted = authorize.account_list.map((acc: any) => ({
-            id: acc.loginid,
-            type: acc.is_virtual ? "Demo" : "Real",
-            currency: acc.currency,
-            balance: Number(acc.balance) || 0,
-          }))
-          setAccounts(formatted)
-        }
+          if (authorize.account_list && Array.isArray(authorize.account_list)) {
+            const formatted = authorize.account_list.map((acc: any) => ({
+              id: acc.loginid,
+              type: acc.is_virtual ? "Demo" : "Real",
+              currency: acc.currency,
+              balance: Number(acc.balance) || 0,
+            }))
+            setAccounts(formatted)
+          }
 
-        if (!balanceSubscribedRef.current) {
-          manager.send({ balance: 1, subscribe: 1 })
-          balanceSubscribedRef.current = true
-          setBalanceSubscribed(true)
+          if (!balanceSubscribedRef.current) {
+            manager.send({ balance: 1, subscribe: 1 })
+            balanceSubscribedRef.current = true
+            setBalanceSubscribed(true)
+          }
         }
       }
 
       if (data.msg_type === "balance" && data.balance) {
         const msgLoginId = data.balance.loginid || activeLoginIdRef.current
-        console.log("[v0] 💰 Balance update received:", data.balance.balance, data.balance.currency, "for", msgLoginId)
+        console.log("[v0] 💰 Balance update:", data.balance.balance, "for", msgLoginId)
         
         if (msgLoginId === activeLoginIdRef.current) {
           setBalance({
@@ -113,36 +135,82 @@ export function useDerivAuth() {
       }
     }
 
-    // Handle connection errors/closures to potentially reset initialization if stuck
-    const handleStatus = (status: string) => {
+    const statusHandler = (status: string) => {
       if (status === "disconnected" && !localStorage.getItem("deriv_api_token")) {
         setIsInitializing(false)
       }
     }
+    const unbindStatus = manager.onConnectionStatus(statusHandler)
 
-    manager.on("authorize", handleAuthMessages)
-    manager.on("balance", handleAuthMessages)
-    const unbindStatus = manager.onConnectionStatus(handleStatus)
+    // Safety Timeout: Force initialization to end after 10 seconds to prevent "stuck" screen
+    const safetyTimeout = setTimeout(() => {
+      if (isInitializing) {
+        console.warn("[v0] 🕒 Authorization safety timeout reached. Forcing check.")
+        setIsInitializing(false)
+      }
+    }, 10000)
 
     return () => {
+      clearTimeout(safetyTimeout)
       manager.off("authorize", handleAuthMessages)
       manager.off("balance", handleAuthMessages)
       unbindStatus()
     }
-  }, [])
-
-  useEffect(() => {
-    activeLoginIdRef.current = activeLoginId
-  }, [activeLoginId])
+  }, [isInitializing])
 
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    // Legacy OAuth callback handler removed - now handled by /api/auth/callback/page.tsx
-    // We only need to check for stored tokens on mount
+    // Legacy Redirect Listener (Handles redirects to root instead of /api/auth/callback)
+    const searchParams = new URLSearchParams(window.location.search)
+    const acct1 = searchParams.get("acct1")
+    const token1 = searchParams.get("token1")
+
+    if (acct1 && token1) {
+      console.log("[v0] 🏎️ Root: Detected legacy redirect parameters")
+      const accountsMap: Record<string, string> = {}
+      let firstToken = ""
+      let firstAccountId = ""
+
+      for (let i = 1; i <= 10; i++) {
+        const acct = searchParams.get(`acct${i}`)
+        const token = searchParams.get(`token${i}`)
+        if (acct && token) {
+          accountsMap[acct] = token
+          if (!firstToken) {
+            firstToken = token
+            firstAccountId = acct
+          }
+        }
+      }
+
+      if (firstToken) {
+        localStorage.setItem("deriv_auth_tokens", JSON.stringify(accountsMap))
+        localStorage.setItem("deriv_api_token", firstToken)
+        localStorage.setItem("active_login_id", firstAccountId)
+        
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname)
+        
+        // Immediately sync state to prevent flash of 'not logged in'
+        setToken(firstToken)
+        setActiveLoginId(firstAccountId)
+        setIsLoggedIn(true)
+        setAccounts(Object.keys(accountsMap).map(id => ({
+          id,
+          type: id.startsWith("VR") ? "Demo" : "Real",
+          currency: "USD",
+          balance: 0
+        })))
+        
+        connectWithToken(firstToken)
+        return
+      }
+    }
+
+    // Standard session check
     const storedToken = localStorage.getItem("deriv_api_token")
     if (storedToken && storedToken.length > 10) {
-      setToken(storedToken)
       connectWithToken(storedToken)
     } else {
       console.log("[v0] ℹ️ No session found")
@@ -157,11 +225,19 @@ export function useDerivAuth() {
     }
 
     try {
-      // Use the manager's V1 Auth flow (handles REST OTP for trading)
+      console.log("[v0] 🔄 Connecting with token:", apiToken.substring(0, 5) + "...")
+      // Use the manager's V1 Auth flow (handles REST+OTP or Legacy Fallback)
       await manager.authorize(apiToken)
+      // Note: isInitializing is also set to false in the 'authorize' event handler above
+      setIsInitializing(false)
     } catch (e) {
       console.error("[v0] Connection error during auth:", e)
       setIsInitializing(false)
+      
+      // If authorization failed and we have no valid session, show the token modal
+      if (!isLoggedIn) {
+        setShowTokenModal(true)
+      }
     }
   }
 

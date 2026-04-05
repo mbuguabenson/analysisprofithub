@@ -267,70 +267,100 @@ export class DerivWebSocketManager {
    * 3. Fetch OTP for the first suitable account.
    * 4. Reconnect WS using the OTP URL.
    */
+  /**
+   * New V1 Authorization Flow with Legacy Fallback:
+   * 1. Detect if token is legacy (direct auth) or modern (REST+OTP).
+   * 2. For modern: Fetch accounts via REST, get OTP, reconnect.
+   * 3. For legacy or failure: Fallback to direct WebSocket { authorize: token }.
+   */
   public async authorize(token: string): Promise<void> {
     if (!token) return
     this.accessToken = token
     
-    try {
-      this.log("info", "Starting V1 Authorization (REST + OTP)")
-      
-      // 1. Fetch available accounts
-      const accountsRes = await this.fetchWithAuth("/trading/v1/options/accounts")
-      const accounts = accountsRes?.accounts || []
-      
-      if (accounts.length === 0) {
-        throw new Error("No trading accounts found for this user.")
-      }
+    // Check if token is likely a legacy token (starts with a1-)
+    const isLegacyToken = token.startsWith("a1-") || token.length < 40 
 
-      // 2. Pick an account (prefer demo if available, otherwise first one)
-      const targetAccount = accounts.find((a: any) => a.account_category === 'demo') || accounts[0]
-      this.currentAccountId = targetAccount.account_id
-      this.log("info", `Selected account: ${this.currentAccountId} (${targetAccount.account_category})`)
+    if (!isLegacyToken) {
+      try {
+        this.log("info", `Starting modern V1 Authorization for: ${token.substring(0, 5)}...`)
+        
+        // 1. Fetch available accounts via REST
+        const accountsRes = await this.fetchWithAuth("/trading/v1/options/accounts")
+        const accounts = accountsRes?.accounts || []
+        
+        if (accounts.length > 0) {
+          // 2. Pick an account (prefer demo if available, otherwise first one)
+          const targetAccount = accounts.find((a: any) => a.account_category === 'demo') || accounts[0]
+          this.currentAccountId = targetAccount.account_id
+          this.log("info", `Selected account: ${this.currentAccountId} (${targetAccount.account_category})`)
 
-      // 3. Obtain OTP for this account
-      const otpRes = await this.fetchWithAuth(`/trading/v1/options/accounts/${this.currentAccountId}/otp`, {
-        method: "POST"
-      })
-      
-      const otpUrl = otpRes?.otp_url
-      if (!otpUrl) {
-        throw new Error("Failed to obtain OTP URL from Deriv API.")
-      }
+          // 3. Obtain OTP for this account
+          const otpRes = await this.fetchWithAuth(`/trading/v1/options/accounts/${this.currentAccountId}/otp`, {
+            method: "POST"
+          })
+          
+          const otpUrl = otpRes?.otp_url
+          if (otpUrl) {
+            this.log("info", "OTP obtained. Reconnecting to authenticated environment...")
+            this.currentEndpoint = targetAccount.account_category === 'demo' ? 'demo' : 'real'
+            
+            await this.disconnect()
+            await this.connect(otpUrl, true)
+            
+            this.isAuthorized = true
 
-      this.log("info", "OTP obtained. Reconnecting to authenticated environment...")
-      
-      // 4. Record state and reconnect
-      this.currentEndpoint = targetAccount.account_category === 'demo' ? 'demo' : 'real'
-      
-      // Force a reconnection with the OTP URL
-      await this.disconnect()
-      await this.connect(otpUrl, true)
-      
-      this.isAuthorized = true
-      
-      // 5. Synthesize legacy 'authorize' event from REST data to sync UI/header
-      const syntheticAuthorize = {
-        msg_type: "authorize",
-        authorize: {
-          loginid: targetAccount.account_id,
-          is_virtual: targetAccount.account_category === 'demo' ? 1 : 0,
-          currency: targetAccount.currency,
-          balance: parseFloat(targetAccount.balance || "0"),
-          landing_company_name: targetAccount.account_category,
-          account_list: accounts.map((acc: any) => ({
-            loginid: acc.account_id,
-            is_virtual: acc.account_category === 'demo' ? 1 : 0,
-            currency: acc.currency,
-            balance: parseFloat(acc.balance || "0")
-          }))
+            // Synthesize legacy 'authorize' event to sync UI components
+            const syntheticAuthorize = {
+              msg_type: "authorize",
+              authorize: {
+                loginid: targetAccount.account_id,
+                is_virtual: targetAccount.account_category === 'demo' ? 1 : 0,
+                currency: targetAccount.currency,
+                balance: parseFloat(targetAccount.balance || "0"),
+                landing_company_name: targetAccount.account_category,
+                account_list: accounts.map((acc: any) => ({
+                  loginid: acc.account_id,
+                  is_virtual: acc.account_category === 'demo' ? 1 : 0,
+                  currency: acc.currency,
+                  balance: parseFloat(acc.balance || "0")
+                }))
+              }
+            }
+            this.emit("authorize", syntheticAuthorize)
+            console.log(`[v0] Successfully authorized modern connection for ${this.currentAccountId}`)
+            return
+          }
         }
+      } catch (e) {
+        console.warn("[v0] Modern Authorization failed, falling back to legacy:", e)
       }
+    }
+
+    // FALLBACK: Direct WebSocket Authorization (Legacy Path)
+    try {
+      this.log("info", `Using direct WebSocket authorization for token: ${token.substring(0, 5)}...`)
       
-      this.emit("authorize", syntheticAuthorize)
-      console.log(`[v0] Successfully authorized V1 connection for ${this.currentAccountId}`)
+      // Ensure we are connected first
+      if (!this.isConnected()) {
+        await this.connect()
+      }
+
+      // Send direct authorize request
+      const response = await this.sendAndWait({ authorize: token }, 15000)
+      
+      if (response.error) {
+        throw new Error(response.error.message)
+      }
+
+      this.isAuthorized = true
+      this.currentAccountId = response.authorize.loginid
+      this.currentEndpoint = response.authorize.is_virtual ? "demo" : "real"
+      
+      // The router will naturally emit the 'authorize' event for use-deriv-auth
+      this.log("info", `Successfully authorized via legacy path for ${this.currentAccountId}`)
       
     } catch (e) {
-      console.error("[v0] V1 Authorization failed:", e)
+      console.error("[v0] All authorization attempts failed:", e)
       this.log("error", `Authorization failed: ${e instanceof Error ? e.message : String(e)}`)
       this.isAuthorized = false
       throw e
