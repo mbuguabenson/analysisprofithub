@@ -16,6 +16,44 @@ export default function AuthCallbackPage() {
     const errorParam = searchParams.get("error")
     const errorDesc = searchParams.get("error_description")
 
+    // Handle Legacy Multi-Account Redirect
+    const acct1 = searchParams.get("acct1")
+    const token1 = searchParams.get("token1")
+
+    const handleLegacyRedirect = () => {
+      const accounts: Record<string, string> = {}
+      let firstToken = ""
+      let firstAccountId = ""
+
+      // Deriv can send up to 10 accounts in the legacy format
+      for (let i = 1; i <= 10; i++) {
+        const acct = searchParams.get(`acct${i}`)
+        const token = searchParams.get(`token${i}`)
+        if (acct && token) {
+          accounts[acct] = token
+          if (!firstToken) {
+            firstToken = token
+            firstAccountId = acct
+          }
+        }
+      }
+
+      if (firstToken) {
+        console.log("[v0] 🏎️ Handling legacy redirect with accounts:", Object.keys(accounts))
+        localStorage.setItem("deriv_auth_tokens", JSON.stringify(accounts))
+        localStorage.setItem("deriv_api_token", firstToken)
+        localStorage.setItem("active_login_id", firstAccountId)
+        router.push("/")
+      } else {
+        setError("No valid accounts found in redirect")
+      }
+    }
+
+    if (acct1 && token1) {
+      handleLegacyRedirect()
+      return
+    }
+
     if (errorParam) {
       setError(`${errorParam}: ${errorDesc || "Access denied"}`)
       return
