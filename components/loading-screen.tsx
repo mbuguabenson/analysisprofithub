@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Shield, Zap, Globe, Cpu, Rocket } from "lucide-react"
+import { Shield, Zap, Globe, Cpu, Rocket, Activity } from "lucide-react"
 import Image from "next/image"
 
 interface LoadingStep {
@@ -85,13 +85,7 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
             <div className="relative">
               <div className="w-20 h-20 sm:w-24 sm:h-24 border-t-2 border-r-2 border-blue-500 rounded-full animate-spin" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <Image
-                  src="/ph-logo.png"
-                  alt="PH Logo"
-                  width={48}
-                  height={48}
-                  className="w-10 h-10 sm:w-12 sm:h-12 animate-pulse"
-                />
+                <Activity className="w-8 h-8 sm:w-10 sm:h-10 text-blue-500 animate-pulse" />
               </div>
             </div>
             <div className="text-center">
@@ -113,20 +107,16 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
                 animate={{ scale: 1, opacity: 1 }}
                 className="mb-4 sm:mb-6 flex justify-center"
               >
-                <Image
-                  src="/ph-logo.png"
-                  alt="PH Logo"
-                  width={64}
-                  height={64}
-                  className="w-9 h-9 sm:w-16 sm:h-16 drop-shadow-[0_0_15px_rgba(37,99,235,0.5)]"
-                />
+                <div className="relative w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center rounded-xl bg-blue-500/10 border border-blue-500/30">
+                  <Activity className="w-8 h-8 sm:w-10 sm:h-10 text-blue-400 drop-shadow-[0_0_15px_rgba(37,99,235,0.8)]" />
+                </div>
               </motion.div>
               <motion.h1
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                className="text-3xl font-black italic tracking-tighter text-white sm:text-6xl"
+                className="text-2xl sm:text-5xl font-black italic tracking-tighter text-white uppercase"
               >
-                PROFIT<span className="text-blue-500 text-glow">HUB</span>
+                ANALYSIS<span className="text-blue-500 text-glow">PROFITHUB</span>
               </motion.h1>
               <motion.div
                 initial={{ width: 0 }}

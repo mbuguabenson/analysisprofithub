@@ -137,23 +137,21 @@ export function DerivAuth({ theme = "dark" }: DerivAuthProps) {
               >
                 <div className="flex items-center gap-1.5 sm:gap-2 font-semibold text-[10px] sm:text-xs">
                   {getAccountIcon(activeLoginId || "", balance?.currency, accountType || undefined)}
-                  {balance ? (
-                    <div className="flex flex-col items-start leading-tight min-w-[70px]">
-                      <span className={`text-[9px] sm:text-[10px] font-medium opacity-70 uppercase tracking-wide`}>
-                        {customUsername || (accountType === "Demo" || accountCode?.startsWith('VRTC') ? "Demo" : "Real")}
-                      </span>
-                      <span className="font-bold tracking-tight">
-                        {Number(balance.amount).toFixed(2)} <span className="text-[10px] opacity-70 font-medium">{balance.currency}</span>
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-start leading-tight min-w-[80px]">
-                      <span className={`text-[9px] sm:text-[10px] font-medium opacity-70 uppercase tracking-wide`}>
-                        {customUsername || accountType || "Loading"}
-                      </span>
-                      <span className="animate-pulse opacity-50 font-bold tracking-tight text-xs">Syncing...</span>
-                    </div>
-                  )}
+                  {(() => {
+                    const fallbackAccount = accounts.find(a => a.id === activeLoginId);
+                    const displayAmt = balance?.amount ?? fallbackAccount?.balance ?? 0;
+                    const displayCur = balance?.currency ?? fallbackAccount?.currency ?? "USD";
+                    return (
+                      <div className="flex flex-col items-start leading-tight min-w-[70px]">
+                        <span className={`text-[9px] sm:text-[10px] font-medium opacity-70 uppercase tracking-wide`}>
+                          {customUsername || (accountType === "Demo" || accountCode?.startsWith('VRTC') ? "Demo" : "Real")}
+                        </span>
+                        <span className="font-bold tracking-tight">
+                          {Number(displayAmt).toFixed(2)} <span className="text-[10px] opacity-70 font-medium">{displayCur}</span>
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
               </SelectTrigger>
               <SelectContent className={`min-w-[190px] p-2 rounded-xl shadow-xl border ${theme === "dark" ? "bg-[#0f172a] border-slate-700/50 text-white" : "bg-white border-gray-100"}`}>

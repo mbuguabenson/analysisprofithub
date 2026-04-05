@@ -333,17 +333,12 @@ export class DerivAPIClient {
       throw new Error("Invalid symbol: Symbol cannot be empty")
     }
 
-    // Latest Deriv API Best Practice: Use underlying_symbol instead of symbol for proposal
     const proposalReq: any = {
       proposal: 1,
       ...validatedParams,
-      underlying_symbol: validatedParams.symbol,
+      symbol: validatedParams.symbol,
       basis: validatedParams.basis || "stake",
     }
-
-    // Remove legacy 'symbol' if underlying_symbol is preferred, 
-    // though keeping it usually doesn't hurt for v3 compatibility.
-    delete proposalReq.symbol
 
     const response = await this.send(proposalReq)
 
@@ -358,7 +353,6 @@ export class DerivAPIClient {
   async getTickHistory(symbol: string, count = 1000): Promise<TickHistoryResponse> {
     const response = await this.send({
       ticks_history: symbol,
-      underlying_symbol: symbol,
       count: count,
       end: "latest",
       style: "ticks",
@@ -485,20 +479,14 @@ export class DerivAPIClient {
     try {
       // Delegate to manager for shared subscription handling
       const request: any = { ticks: symbol, subscribe: 1 }
-      if (this.config.isOptions) {
-        request.underlying_symbol = symbol
-        delete request.ticks // Might need to keep both or swap, let's follow migration guide strictly
-      }
 
       const subscriptionId = await this.manager.subscribeTicks(symbol, callback)
 
       if (subscriptionId) {
         this.activeSubscriptions.set(`tick_${symbol}`, subscriptionId)
-        // We register it locally too so it can be handled by handleMessage if needed, 
-        // though the manager now handles the callback.
-        this.subscriptions.set(subscriptionId, (data) => {
-          if (data.tick) callback(data.tick)
-        })
+        // The manager successfully handles the callback using its tickCallbacks map.
+        // Doing this.subscriptions.set() double-fires the callback with raw tick objects
+        // that are missing the 'lastDigit' property.
       }
 
       return subscriptionId

@@ -113,8 +113,8 @@ export function DashboardTab({ theme = "dark" }: DashboardTabProps) {
       }
     }
 
-    manager.on("message", handleMessage)
-    return () => manager.off("message", handleMessage)
+    manager.on("*", handleMessage)
+    return () => manager.off("*", handleMessage)
   }, [manager])
 
   // Calculate total profit
@@ -157,7 +157,7 @@ export function DashboardTab({ theme = "dark" }: DashboardTabProps) {
       currency: currency,
       duration: 5,
       duration_unit: "t",
-      underlying_symbol: "1HZ100V",
+      symbol: "1HZ100V",
       req_id: 1,
     })
     addLog("📨 Proposal request sent")

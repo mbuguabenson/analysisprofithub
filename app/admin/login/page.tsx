@@ -52,7 +52,7 @@ export default function AdminLoginPage() {
             <div className="w-20 h-20 bg-blue-600/20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-blue-500/20 rotate-3 group-hover:rotate-6 transition-transform">
               <Shield className="h-10 w-10 text-blue-500" />
             </div>
-            <h1 className="text-3xl font-black text-white tracking-tight mb-2 uppercase">Profit Hub</h1>
+            <h1 className="text-3xl font-black text-white tracking-tight mb-2 uppercase">analysisprofithub</h1>
             <p className="text-xs text-slate-500 font-bold tracking-[0.2em] uppercase">Administrative Access</p>
           </div>
 

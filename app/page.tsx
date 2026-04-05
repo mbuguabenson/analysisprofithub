@@ -199,11 +199,11 @@ export default function DerivAnalysisApp() {
                 <div className="flex items-center shrink-0 min-w-[140px] sm:min-w-[200px]">
                   <div className="flex items-center gap-2 sm:gap-3">
                     <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-black text-sm sm:text-base ${theme === "dark" ? "bg-blue-600 text-white" : "bg-blue-600 text-white"}`}>
-                      P
+                      A
                     </div>
                     <div className="flex flex-col leading-tight">
                       <h1 className={`text-base sm:text-lg font-bold tracking-tight ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
-                        ProfitHub
+                        analysisprofithub
                       </h1>
                       <h2 className={`text-[9px] sm:text-[10px] font-medium tracking-wide opacity-60 uppercase ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
                         Trading
@@ -285,7 +285,7 @@ export default function DerivAnalysisApp() {
                 </div>
               </div>
 
-              <div className="px-2 sm:px-6 lg:px-8 flex flex-col gap-4 pb-4">
+              <div className="px-2 sm:px-6 lg:px-8 flex flex-col gap-2 pb-2">
                 {/* Navigation Tabs - Clean Design */}
                 <div className="flex items-center justify-start w-full overflow-x-auto no-scrollbar -mx-2 sm:-mx-6 lg:-mx-8 px-2 sm:px-6 lg:px-8">
                   <div className={`inline-flex rounded-lg border transition-all duration-500 ${theme === "dark" 
@@ -391,7 +391,7 @@ export default function DerivAnalysisApp() {
                           Price
                         </span>
                         <span className={`text-[11px] sm:text-[16px] font-black tabular-nums leading-none ${theme === "dark" ? "text-cyan-400" : "text-cyan-600"}`}>
-                          {currentPrice?.toFixed(2) || "0.00"}
+                          {currentPrice?.toFixed(5) || "0.00000"}
                         </span>
                       </div>
 
@@ -738,54 +738,17 @@ export default function DerivAnalysisApp() {
 
       {!siteConfig?.footerHidden && (
         <footer
-          className={`mt-6 py-6 sm:py-8 transition-all duration-300 border-t ${theme === "dark"
+          className={`mt-4 py-3 transition-all duration-300 border-t ${theme === "dark"
             ? "bg-[#0a0a0a] border-white/8"
             : "bg-gray-50 border-gray-200"
             }`}
         >
           <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-              {/* Brand Section */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${theme === "dark" ? "bg-blue-600 text-white" : "bg-blue-600 text-white"}`}>
-                    P
-                  </div>
-                  <span className={`font-semibold tracking-tight ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
-                    ProfitHub
-                  </span>
-                </div>
-                <p className={`text-xs sm:text-sm ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
-                  Real-time trading analysis and signals
-                </p>
+            <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] sm:text-xs ${theme === "dark" ? "text-gray-500" : "text-gray-500"}`}>
+              <div className="flex flex-wrap items-center gap-4">
+                <span className="font-bold text-slate-800 dark:text-gray-400">analysisprofithub © 2026</span>
+                <button onClick={() => setIsDisclaimerOpen(true)} className="hover:text-blue-500 transition-colors">Risk Disclaimer</button>
               </div>
-
-              {/* Links Section */}
-              <div className="flex flex-col gap-3 sm:col-span-2">
-                <div className="flex flex-wrap gap-3 sm:gap-6">
-                  <button
-                    onClick={() => setIsDisclaimerOpen(true)}
-                    className={`text-xs sm:text-sm font-medium transition-colors flex items-center gap-1.5 ${theme === "dark" ? "text-gray-400 hover:text-blue-500" : "text-gray-600 hover:text-blue-600"}`}
-                  >
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    Risk Disclaimer
-                  </button>
-                  <a href="#" className={`text-xs sm:text-sm font-medium transition-colors ${theme === "dark" ? "text-gray-400 hover:text-blue-500" : "text-gray-600 hover:text-blue-600"}`}>
-                    Privacy Policy
-                  </a>
-                  <a href="#" className={`text-xs sm:text-sm font-medium transition-colors hidden sm:inline-block ${theme === "dark" ? "text-gray-400 hover:text-blue-500" : "text-gray-600 hover:text-blue-600"}`}>
-                    Terms of Service
-                  </a>
-                  <a href="#" className={`text-xs sm:text-sm font-medium transition-colors ${theme === "dark" ? "text-gray-400 hover:text-blue-500" : "text-gray-600 hover:text-blue-600"}`}>
-                    Support
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            <div className={`mt-6 sm:mt-8 pt-6 border-t flex flex-col sm:flex-row items-center justify-between gap-3 text-xs sm:text-sm ${theme === "dark" ? "border-white/8 text-gray-500" : "border-gray-200 text-gray-500"}`}>
-              <p>© 2026 ProfitHub. All rights reserved.</p>
-              <p>Trading involves risk. Please read our risk disclaimer.</p>
             </div>
           </div>
         </footer>

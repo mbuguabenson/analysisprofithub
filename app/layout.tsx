@@ -10,7 +10,7 @@ import { DerivAPIProvider } from "@/lib/deriv-api-context"
 import { ThemeProviderAdvanced } from "@/lib/theme-provider-advanced"
 
 export const metadata: Metadata = {
-  title: "Profit Hub - Trading Bot Simulator & Market Analysis",
+  title: "analysisprofithub - Trading Bot Simulator & Market Analysis",
   description: "Real-time Deriv market analysis and trading signals with advanced bot simulator",
   generator: "v0.app",
 }
