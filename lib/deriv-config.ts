@@ -20,14 +20,18 @@ export const OAUTH_CLIENT_ID = "32KGABH3pjSMkQ6JTotTG"
 // Get redirect URL based on environment
 // This must match the PRE-REGISTERED redirect URIs in the Deriv OAuth dashboard (api.deriv.com)
 const getOAuthRedirectUrl = () => {
-  // Use http://localhost:3000/api/auth/callback as the standard development path
-  // In production, this should be https://yourdomain.com/api/auth/callback
+  // 1. If we are in the browser, always use the current origin
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/api/auth/callback`
+  }
+
+  // 2. Server-side fallbacks (for API routes/SSR)
   if (process.env.NEXT_PUBLIC_BASE_URL) {
     return `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/callback`
   }
   
-  // Standard development fallback
-  return "http://localhost:3000/api/auth/callback"
+  // 3. Absolute default
+  return "https://analysisprofithub.vercel.app/api/auth/callback"
 }
 
 export const DERIV_REDIRECT_URL = getOAuthRedirectUrl()

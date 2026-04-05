@@ -206,9 +206,17 @@ export function useDerivAuth() {
         app_id: DERIV_CONFIG.APP_ID, // Include legacy ID for routing compatibility
       })
 
-      const oauthUrl = `${DERIV_API.OAUTH}?${params.toString()}`
+      const paramsStr = params.toString()
+      const oauthUrl = `${DERIV_API.OAUTH}?${paramsStr}`
 
-      console.log("[v0] 🔐 Authorization URL generated. Redirecting...")
+      console.log("[v0] 🔐 Authorization Parameters:")
+      console.log("   - client_id:", OAUTH_CLIENT_ID)
+      console.log("   - redirect_uri:", DERIV_REDIRECT_URL)
+      console.log("   - state:", state)
+      console.log("   - code_challenge:", codeChallenge)
+      console.log("   - scope:", "trade")
+      
+      console.log("[v0] 🔐 Redirecting to:", oauthUrl)
       window.location.href = oauthUrl
     } catch (error) {
       console.error("[v0] ❌ OAuth setup error:", error)
