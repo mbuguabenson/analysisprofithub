@@ -307,15 +307,45 @@ export function useDerivAuth() {
     if (typeof window === "undefined") return
 
     try {
-      // Build the standard authorization URL with brand=deriv and explicit redirect_uri
-      // The new API uses the OAUTH_CLIENT_ID (alphanumeric) for login operations
-      // Note: the login parameter requires client_id in standard OAuth, but Deriv sometimes aliases it to app_id. We'll use app_id here with the OAUTH_CLIENT_ID since that's Deriv's standard structure for custom portals.
-      const oauthUrl = `${DERIV_API.OAUTH}?app_id=${OAUTH_CLIENT_ID}&l=EN&brand=deriv&redirect_uri=${encodeURIComponent(DERIV_REDIRECT_URL)}`
+      // 1. Generate a random code_verifier
+      const array = crypto.getRandomValues(new Uint8Array(64));
+      const codeVerifier = Array.from(array)
+        .map(v => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~'[v % 66])
+        .join('');
 
-      console.log("[v0] 🔐 Redirecting to Deriv Bot Local Auth:", oauthUrl)
+      // 2. Derive the code_challenge
+      const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(codeVerifier));
+      const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(hash)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+
+      // 3. Generate a random state for CSRF protection
+      const state = crypto.getRandomValues(new Uint8Array(16))
+        .reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
+
+      // 4. Store code_verifier and state before redirecting
+      sessionStorage.setItem('pkce_code_verifier', codeVerifier);
+      sessionStorage.setItem('oauth_state', state);
+
+      // Build the standard authorization URL with all required PKCE parameters
+      const params = new URLSearchParams({
+        response_type: 'code',
+        client_id: OAUTH_CLIENT_ID,
+        redirect_uri: DERIV_REDIRECT_URL,
+        scope: 'trade account_manage',
+        state: state,
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256',
+        app_id: DERIV_APP_ID // Pass legacy app ID for backward compatibility
+      })
+
+      const oauthUrl = `https://auth.deriv.com/oauth2/auth?${params.toString()}`
+
+      console.log("[v0] 🔐 Redirecting to Deriv OAuth URL:", oauthUrl)
       window.location.href = oauthUrl
     } catch (error) {
-      console.error("[v0] ❌ OAuth setup error:", error)
+      console.error("[v0] ❌ OAuth PKCE setup error:", error)
     }
   }
 
