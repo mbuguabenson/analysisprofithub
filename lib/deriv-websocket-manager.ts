@@ -264,8 +264,8 @@ export class DerivWebSocketManager {
     headers.set("Authorization", `Bearer ${this.accessToken}`)
     headers.set("Deriv-App-ID", this.appId)
     
-    const hasBody = options.body !== undefined
-    if (hasBody) {
+    const hasBody = options.body !== undefined && options.body !== null
+    if (hasBody && !headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json")
     }
     
@@ -338,7 +338,7 @@ export class DerivWebSocketManager {
           method: "POST"
         })
         
-        const otpUrl = otpRes?.data?.url
+        const otpUrl = otpRes?.data?.url?.trim()
         if (otpUrl) {
           this.log("info", "OTP obtained. Reconnecting to authenticated environment...")
           this.currentEndpoint = targetAccount.account_type === 'demo' ? 'demo' : 'real'
@@ -412,6 +412,7 @@ export class DerivWebSocketManager {
     // already-selected account. Re-using a stale OTP URL is the primary cause of
     // reconnect failures; the canonical reference implementation requires this.
     if (this.accessToken && this.currentAccountId) {
+      this.messageQueue = [] // Prevent stale messages from previous connection
       // Reference delays: [500, 1000, 2000, 4000, 8000]
       const otpDelays = [500, 1000, 2000, 4000, 8000]
       const delayMs = otpDelays[Math.min(this.reconnectAttempts, otpDelays.length - 1)]
@@ -450,21 +451,24 @@ export class DerivWebSocketManager {
 
   private startHeartbeat() {
     this.stopHeartbeat()
-    this.heartbeatInterval = setInterval(() => {
-      const timeSinceLastMessage = Date.now() - this.lastMessageTime
-      if (timeSinceLastMessage > 60000) {
-        this.log("warning", "No messages for 60s, reconnecting")
-        this.ws?.close()
-        return
-      }
-      if (this.ws?.readyState === WebSocket.OPEN) {
-        try {
-          this.send({ ping: 1, req_id: this.getNextReqId() })
-        } catch (err) {
-          this.log("error", `Heartbeat ping failed: ${err}`)
+    // Delay heartbeat start after opening to let OTP session stabilize
+    setTimeout(() => {
+      this.heartbeatInterval = setInterval(() => {
+        const timeSinceLastMessage = Date.now() - this.lastMessageTime
+        if (timeSinceLastMessage > 60000) {
+          this.log("warning", "No messages for 60s, reconnecting")
+          this.ws?.close()
+          return
         }
-      }
-    }, 30000)
+        if (this.ws?.readyState === WebSocket.OPEN) {
+          try {
+            this.send({ ping: 1, req_id: this.getNextReqId() })
+          } catch (err) {
+            this.log("error", `Heartbeat ping failed: ${err}`)
+          }
+        }
+      }, 30000)
+    }, 5000) // 5-second grace period
   }
 
   private stopHeartbeat() {
@@ -930,6 +934,7 @@ export class DerivWebSocketManager {
   public async disconnect(): Promise<void> {
     this.stopHeartbeat()
     this.unsubscribeAll()
+    this.messageQueue = [] // Critical: Wipe the queue to prevent early OTP interference
     if (this.ws) {
       this.ws.close()
       this.ws = null
