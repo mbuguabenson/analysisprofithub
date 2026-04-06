@@ -14,7 +14,7 @@
  * - Derivatives Base (optional): https://github.com/deriv-com/derivatives
  */
 
-export const DERIV_APP_ID = "110211" // Legacy WebSocket App ID
+export const DERIV_APP_ID = "36300" // Legacy WebSocket App ID
 export const OAUTH_CLIENT_ID = "32KGABH3pjSMkQ6JTotTG" // Modern PKCE OAuth Client ID
 
 // Get redirect URL based on environment
