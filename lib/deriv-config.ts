@@ -14,8 +14,8 @@
  * - Derivatives Base (optional): https://github.com/deriv-com/derivatives
  */
 
-export const DERIV_APP_ID = "36300"
-export const OAUTH_CLIENT_ID = "36300"
+export const DERIV_APP_ID = "110211"
+export const OAUTH_CLIENT_ID = "32KGABH3pjSMkQ6JTotTG"
 
 // Get redirect URL based on environment
 // This must match the PRE-REGISTERED redirect URIs in the Deriv OAuth dashboard (api.deriv.com)

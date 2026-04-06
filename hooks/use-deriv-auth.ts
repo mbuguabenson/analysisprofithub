@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import { DerivWebSocketManager } from "@/lib/deriv-websocket-manager"
-import { DERIV_APP_ID, DERIV_API, DERIV_REDIRECT_URL } from "@/lib/deriv-config"
+import { DERIV_APP_ID, OAUTH_CLIENT_ID, DERIV_API, DERIV_REDIRECT_URL } from "@/lib/deriv-config"
 
 interface Balance {
   amount: number
@@ -261,12 +261,26 @@ export function useDerivAuth() {
       await manager.authorize(apiToken)
       // Note: isInitializing is also set to false in the 'authorize' event handler above
       setIsInitializing(false)
-    } catch (e) {
+    } catch (e: any) {
       console.error("[v0] Connection error during auth:", e)
       setIsInitializing(false)
       
-      // If authorization failed and we have no valid session, show the token modal
-      if (!isLoggedIn) {
+      // Handle the raw API error object that is thrown by the manager
+      if (e?.code === "InvalidToken" || e?.code === "AuthorizationRequired") {
+         console.warn("[v0] ⚠️ Invalid Token detected. Nuking session.")
+         setIsLoggedIn(false)
+         setActiveLoginId(null)
+         activeLoginIdRef.current = null
+         setAccountCode("")
+         setToken("")
+
+         localStorage.removeItem("deriv_api_token")
+         localStorage.removeItem("deriv_auth_tokens")
+         localStorage.removeItem("active_login_id")
+         localStorage.removeItem("deriv_last_balances")
+         
+         setShowTokenModal(true)
+      } else if (!isLoggedIn) {
         setShowTokenModal(true)
       }
     }
@@ -294,8 +308,9 @@ export function useDerivAuth() {
 
     try {
       // Build the standard authorization URL with brand=deriv and explicit redirect_uri
-      // The redirect_uri must exactly match the registered one (including port and trailing slash)
-      const oauthUrl = `${DERIV_API.OAUTH}?app_id=${DERIV_APP_ID}&l=EN&brand=deriv&redirect_uri=${encodeURIComponent(DERIV_REDIRECT_URL)}`
+      // The new API uses the OAUTH_CLIENT_ID (alphanumeric) for login operations
+      // Note: the login parameter requires client_id in standard OAuth, but Deriv sometimes aliases it to app_id. We'll use app_id here with the OAUTH_CLIENT_ID since that's Deriv's standard structure for custom portals.
+      const oauthUrl = `${DERIV_API.OAUTH}?app_id=${OAUTH_CLIENT_ID}&l=EN&brand=deriv&redirect_uri=${encodeURIComponent(DERIV_REDIRECT_URL)}`
 
       console.log("[v0] 🔐 Redirecting to Deriv Bot Local Auth:", oauthUrl)
       window.location.href = oauthUrl

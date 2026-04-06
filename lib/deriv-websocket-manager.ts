@@ -413,9 +413,12 @@ export class DerivWebSocketManager {
       const token =
         localStorage.getItem('authToken') ||
         localStorage.getItem('clientToken') ||
+        localStorage.getItem('deriv_api_token') || 
         localStorage.getItem('deriv_auth_token')
       if (token && token !== 'null' && token.length > 10) {
-        this.authorize(token)
+        this.authorize(token).catch(err => {
+           console.warn("[v0] Background tryAutoAuthorize failed (likely network error or invalid token):", err?.message || err)
+        })
       }
     } catch { /* SSR safety */ }
   }
