@@ -187,24 +187,29 @@ export class DerivAPIClient {
   async connect(): Promise<void> {
     if (this.config.isOptions) {
       const type = this.config.accountType || "public"
-      let otp: string | undefined
+      let otpUrl: string | undefined
 
       if (type !== "public" && this.config.token) {
-        // We need an account ID to get an OTP. 
-        // For now, we assume provide it via config or fetch it first.
-        // Let's assume we fetch accounts if not provided.
+        // Pick the matching account by account_type, then get a fresh OTP URL
         try {
           const accounts = await derivREST.getAccounts()
-          const account = accounts.find(a => this.config.accountType === "demo" ? a.is_virtual : !a.is_virtual)
-          if (account) {
-            otp = await derivREST.getOTP(account.loginid)
+          // getAccounts() now returns the unwrapped data[] array with { account_id, account_type }
+          const account = accounts.find((a: any) =>
+            this.config.accountType === "demo"
+              ? a.account_type === "demo"
+              : a.account_type === "real"
+          )
+          if (account?.account_id) {
+            // getOTP() returns the full wss://…?otp=… URL — pass it straight through
+            otpUrl = await derivREST.getOTP(account.account_id)
           }
         } catch (e) {
           console.error("[v0] Potential error fetching OTP (might be public only):", e)
         }
       }
 
-      await this.manager.connectOptions(type, otp)
+      // connectOptions detects a full wss:// URL and connects to it directly
+      await this.manager.connectOptions(type, otpUrl)
       this.isAuthorised = type !== "public" // OTP auth is implicit
     } else {
       await this.manager.connect()

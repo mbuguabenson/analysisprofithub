@@ -253,6 +253,7 @@ export class DerivWebSocketManager {
     const headers = new Headers(options.headers)
     headers.set("Authorization", `Bearer ${this.accessToken}`)
     headers.set("Deriv-App-ID", this.appId)
+    headers.set("Content-Type", "application/json")
     
     console.log(`[v0] REST ${options.method || 'GET'} ${url}`)
     
@@ -288,9 +289,8 @@ export class DerivWebSocketManager {
     // Check if token is likely a legacy token (starts with a1-)
     const isLegacyToken = token.startsWith("a1-") || token.length < 40 
     
-    // On localhost, we prioritize the standard "authorization method" (V3)
-    const isLocalhost = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
-    const prioritizeLegacy = isLegacyToken || isLocalhost
+    // Pure V1 OTP flow enforcing REST Token Exchange!
+    const prioritizeLegacy = isLegacyToken
 
     if (!prioritizeLegacy) {
       try {
@@ -298,25 +298,27 @@ export class DerivWebSocketManager {
         
         // 1. Fetch available accounts via REST
         const accountsRes = await this.fetchWithAuth("/trading/v1/options/accounts")
-        const accounts = accountsRes?.accounts || []
+        // API wraps data in { data: [...] }; fall back to raw array for forward-compat
+        const accounts: any[] = accountsRes?.data ?? accountsRes ?? []
         
         if (accounts.length > 0) {
           // 2. Pick an account (prefer demo if available, otherwise first one)
-          const targetAccount = accounts.find((a: any) => a.account_category === 'demo') || accounts[0]
+          const targetAccount = accounts.find((a: any) => a.account_type === 'demo') || accounts[0]
           this.currentAccountId = targetAccount.account_id
-          this.log("info", `Selected account: ${this.currentAccountId} (${targetAccount.account_category})`)
+          this.log("info", `Selected account: ${this.currentAccountId} (${targetAccount.account_type})`)
 
           // 3. Obtain OTP for this account
           const otpRes = await this.fetchWithAuth(`/trading/v1/options/accounts/${this.currentAccountId}/otp`, {
             method: "POST"
           })
           
-          const otpUrl = otpRes?.otp_url
+          const otpUrl = otpRes?.data?.url
           if (otpUrl) {
             this.log("info", "OTP obtained. Reconnecting to authenticated environment...")
-            this.currentEndpoint = targetAccount.account_category === 'demo' ? 'demo' : 'real'
+            this.currentEndpoint = targetAccount.account_type === 'demo' ? 'demo' : 'real'
             
             await this.disconnect()
+            // OTP URL is a complete wss:// URL — connect to it directly
             await this.connect(otpUrl, true)
             
             this.isAuthorized = true
@@ -326,13 +328,13 @@ export class DerivWebSocketManager {
               msg_type: "authorize",
               authorize: {
                 loginid: targetAccount.account_id,
-                is_virtual: targetAccount.account_category === 'demo' ? 1 : 0,
+                is_virtual: targetAccount.account_type === 'demo' ? 1 : 0,
                 currency: targetAccount.currency,
                 balance: parseFloat(targetAccount.balance || "0"),
-                landing_company_name: targetAccount.account_category,
+                landing_company_name: targetAccount.account_type,
                 account_list: accounts.map((acc: any) => ({
                   loginid: acc.account_id,
-                  is_virtual: acc.account_category === 'demo' ? 1 : 0,
+                  is_virtual: acc.account_type === 'demo' ? 1 : 0,
                   currency: acc.currency,
                   balance: parseFloat(acc.balance || "0")
                 }))
@@ -435,6 +437,35 @@ export class DerivWebSocketManager {
       return
     }
     
+    // If we are using modern V1 REST + OTP, always fetch a FRESH OTP URL for the
+    // already-selected account. Re-using a stale OTP URL is the primary cause of
+    // reconnect failures; the canonical reference implementation requires this.
+    if (this.accessToken && !this.accessToken.startsWith("a1-") && this.accessToken.length >= 40
+        && this.currentAccountId) {
+      // Reference delays: [500, 1000, 2000, 4000, 8000]
+      const otpDelays = [500, 1000, 2000, 4000, 8000]
+      const delayMs = otpDelays[Math.min(this.reconnectAttempts, otpDelays.length - 1)]
+      this.reconnectAttempts++
+      this.log("info", `[OTP] Fetching fresh OTP for ${this.currentAccountId} in ${delayMs}ms (attempt ${this.reconnectAttempts})...`)
+      setTimeout(async () => {
+        try {
+          const otpRes = await this.fetchWithAuth(
+            `/trading/v1/options/accounts/${this.currentAccountId}/otp`,
+            { method: "POST" }
+          )
+          const otpUrl = otpRes?.data?.url
+          if (!otpUrl) throw new Error("OTP response missing data.url")
+          await this.connect(otpUrl, true)
+          this.reconnectAttempts = 0
+          this.log("info", `[OTP] Reconnected successfully for ${this.currentAccountId}`)
+        } catch (err) {
+          this.log("error", `[OTP] Reconnection attempt failed: ${err}. Retrying...`)
+          this.handleReconnect()
+        }
+      }, delayMs)
+      return
+    }
+
     // Switch to fallback URL if primary fails after 3 attempts
     if (this.reconnectAttempts === 3 && this.currentWsUrl.includes("ws.derivws.com")) {
       console.log("[v0] Switching to fallback WebSocket URL due to repeated failures")
@@ -981,7 +1012,13 @@ export class DerivWebSocketManager {
     }
   }
 
-  public async connectOptions(type: "demo" | "real" | "public", otp?: string): Promise<void> {
+  public async connectOptions(type: "demo" | "real" | "public", otpOrUrl?: string): Promise<void> {
+    // If the value passed is already a full OTP URL (from getOTP()), use it directly.
+    // Otherwise build a URL from the OPTIONS_WS base and append the token.
+    if (otpOrUrl && (otpOrUrl.startsWith("wss://") || otpOrUrl.startsWith("ws://"))) {
+      return this.connect(otpOrUrl, true)
+    }
+
     const typeKey = type.toUpperCase() as keyof typeof DERIV_API.OPTIONS_WS
     let baseUrl: string = DERIV_API.OPTIONS_WS[typeKey]
     
@@ -990,7 +1027,7 @@ export class DerivWebSocketManager {
       baseUrl = baseUrl.replace("api.derivws.com/trading/v1/options/ws", "ws.binaryws.com/websockets/v3")
     }
     
-    const url = otp ? `${baseUrl}?otp=${otp}` : baseUrl
+    const url = otpOrUrl ? `${baseUrl}?otp=${otpOrUrl}` : baseUrl
     return this.connect(url as string, true)
   }
 }

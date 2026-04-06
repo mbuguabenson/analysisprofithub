@@ -48,28 +48,47 @@ export class DerivRESTClient {
     }
 
     /**
-     * Fetch a one-time password (OTP) for WebSocket authentication
-     * @param accountId The login ID of the account (e.g., CR12345, VRTC12345)
+     * Fetch a one-time-use WebSocket URL (OTP URL) for WebSocket authentication.
+     * The returned URL already contains the OTP token as a query parameter;
+     * pass it directly to `new WebSocket(url)` — do NOT append anything to it.
+     *
+     * @param accountId The options account ID (e.g., DOT12345)
+     * @returns Full OTP WebSocket URL (wss://…?otp=…)
      */
     async getOTP(accountId: string): Promise<string> {
         try {
             const data = await this.request(`/trading/v1/options/accounts/${accountId}/otp`, {
                 method: "POST"
             })
-            return data.otp
+            // Response shape: { data: { url: "wss://…?otp=…" } }
+            const url = data?.data?.url as string | undefined
+            if (!url) throw new Error(`OTP response missing data.url (got: ${JSON.stringify(data)})`)
+            return url
         } catch (error) {
-            console.error("[v0] Failed to fetch OTP:", error)
+            console.error("[v0] Failed to fetch OTP URL:", error)
             throw error
         }
     }
 
     /**
-     * Get all registered Options accounts for the authenticated user
+     * Get all registered Options accounts for the authenticated user.
+     * Returns the raw `data` array from the REST response.
      */
     async getAccounts(): Promise<any[]> {
-        return this.request("/trading/v1/options/accounts", {
+        const res = await this.request("/trading/v1/options/accounts", {
             method: "GET"
         })
+        return res?.data ?? res ?? []
+    }
+
+    /**
+     * Select the best account (prefers demo) and return its account_id.
+     * Mirrors the reference DerivClient.selectAccount() behaviour.
+     */
+    async selectAccount(): Promise<{ account_id: string; account_type: 'demo' | 'real' }> {
+        const accounts = await this.getAccounts() as Array<{ account_id: string; account_type: 'demo' | 'real' }>
+        if (!accounts || accounts.length === 0) throw new Error('No Options accounts found')
+        return accounts.find(a => a.account_type === 'demo') || accounts[0]
     }
 
     /**
