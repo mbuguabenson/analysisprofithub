@@ -101,6 +101,11 @@ export class DerivWebSocketManager {
   // Cache for historical data to prevent redundant fetches
   private historyCache: Map<string, { data: TickData[], timestamp: number }> = new Map()
   private readonly CACHE_TTL = 30000 // 30 seconds
+  
+  // Auth caching and concurrency management (Options V1)
+  private accountsCache: any[] | null = null
+  private accountsPromise: Promise<any[]> | null = null
+  
   private connectionLogs: ConnectionLog[] = []
   private readonly maxLogs = 100
   private connectionStatusListeners: Set<(status: "connected" | "disconnected" | "reconnecting") => void> = new Set()
@@ -254,9 +259,9 @@ export class DerivWebSocketManager {
   public onTokenExpired: (() => void) | null = null
 
   /**
-   * Helper for authenticated REST API calls (Deriv V1)
+   * Helper for authenticated REST API calls (Deriv V1) with 429 (Rate Limit) handling.
    */
-  private async fetchWithAuth(path: string, options: RequestInit = {}): Promise<any> {
+  private async fetchWithAuth(path: string, options: RequestInit = {}, retryCount = 0): Promise<any> {
     if (!this.accessToken) throw new Error("No access token available")
     
     const url = `${DERIV_API.REST_BASE}${path}`
@@ -269,37 +274,80 @@ export class DerivWebSocketManager {
       headers.set("Content-Type", "application/json")
     }
     
-    console.log(`[v0] REST ${options.method || 'GET'} ${url}`)
+    console.log(`[v0] REST ${options.method || 'GET'} ${url}${retryCount > 0 ? ` (retry ${retryCount})` : ''}`)
     
-    const response = await fetch(url, { ...options, headers })
+    try {
+      const response = await fetch(url, { ...options, headers })
 
-    // 401 = access_token expired — notify the auth layer to re-initiate login
-    if (response.status === 401) {
-      this.log("warning", "REST 401: access token expired. Notifying auth layer.")
-      this.isAuthorized = false
-      this.accessToken = null
-      if (this.onTokenExpired) this.onTokenExpired()
-      throw new Error("Access token expired (401). Please log in again.")
-    }
+      // 429 = Rate Limit Exceeded
+      if (response.status === 429) {
+        if (retryCount >= 3) {
+          throw new Error("Rate limit exceeded (429) and max retries reached.")
+        }
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      try {
-        const errorJson = JSON.parse(errorText)
-        throw new Error(errorJson.error?.message || `HTTP ${response.status}: ${errorText}`)
-      } catch {
-        throw new Error(`HTTP ${response.status}: ${errorText}`)
+        // 1. Read Retry-After header (seconds)
+        let retryAfter = parseInt(response.headers.get("Retry-After") || "0")
+        
+        // 2. Default backoff: [5s, 10s, 20s]
+        if (retryAfter <= 0) {
+          const backoffs = [5, 10, 20]
+          retryAfter = backoffs[retryCount]
+        }
+
+        this.log("warning", `Rate limit hit (429). Retrying in ${retryAfter}s...`)
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))
+        return this.fetchWithAuth(path, options, retryCount + 1)
       }
+
+      // 401 = access_token expired — notify the auth layer to re-initiate login
+      if (response.status === 401) {
+        this.log("warning", "REST 401: access token expired. Notifying auth layer.")
+        this.isAuthorized = false
+        this.accessToken = null
+        this.accountsCache = null // Invalidate cache
+        if (this.onTokenExpired) this.onTokenExpired()
+        throw new Error("Access token expired (401). Please log in again.")
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        try {
+          const errorJson = JSON.parse(errorText)
+          throw new Error(errorJson.error?.message || `HTTP ${response.status}: ${errorText}`)
+        } catch {
+          throw new Error(`HTTP ${response.status}: ${errorText}`)
+        }
+      }
+      return response.json()
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("429")) throw err
+      // Connection errors or timeouts
+      throw err
     }
-    return response.json()
   }
   /**
-   * New V1 Authorization Flow:
-   * 1. Store token.
-   * 2. Fetch accounts via REST.
-   * 3. Fetch OTP for the first suitable account.
-   * 4. Reconnect WS using the OTP URL.
+   * Internal helper to fetch accounts once per session with a promise-based mutex.
    */
+  private async getAccounts(): Promise<any[]> {
+    if (this.accountsCache) return this.accountsCache
+    if (this.accountsPromise) return this.accountsPromise
+
+    this.accountsPromise = (async () => {
+      try {
+        const accountsRes = await this.fetchWithAuth("/trading/v1/options/accounts")
+        // API wraps data in { data: [...] }; fall back to raw array for forward-compat
+        this.accountsCache = accountsRes?.data ?? accountsRes ?? []
+        return this.accountsCache || []
+      } finally {
+        this.accountsPromise = null
+      }
+    })()
+
+    return this.accountsPromise
+  }
+
+  /**
+   * New V1 Authorization Flow:
   /**
    * New V1 Authorization Flow with Legacy Fallback:
    * 1. Detect if token is legacy (direct auth) or modern (REST+OTP).
@@ -321,19 +369,20 @@ export class DerivWebSocketManager {
     try {
       this.log("info", `Starting modern V1 Authorization for: ${token.substring(0, 5)}...`)
       
-      // 1. Fetch available accounts via REST
-      const accountsRes = await this.fetchWithAuth("/trading/v1/options/accounts")
-      // API wraps data in { data: [...] }; fall back to raw array for forward-compat
-      const accounts: any[] = accountsRes?.data ?? accountsRes ?? []
+      // 1. Fetch available accounts via REST (Once per session)
+      const accounts = await this.getAccounts()
       
       if (accounts.length > 0) {
         // 2. Pick an account (prefer demo if available, otherwise first one)
-        const targetAccount = accounts.find((a: any) => a.account_type === 'demo') || accounts[0]
-        this.currentAccountId = targetAccount.account_id
-        this.log("info", `Selected account: ${this.currentAccountId} (${targetAccount.account_type})`)
+        if (!this.currentAccountId) {
+          const targetAccount = accounts.find((a: any) => a.account_type === 'demo') || accounts[0]
+          this.currentAccountId = targetAccount.account_id
+          this.log("info", `Selected account: ${this.currentAccountId} (${targetAccount.account_type})`)
+        }
+        
+        const targetAccount = accounts.find((a: any) => a.account_id === this.currentAccountId) || accounts[0]
 
-        // 3. Obtain OTP for this account
-        // Explicitly send no body to avoid 400 errors from strict servers
+        // 3. Obtain OTP for this account (Always fresh for new connection)
         const otpRes = await this.fetchWithAuth(`/trading/v1/options/accounts/${this.currentAccountId}/otp`, {
           method: "POST"
         })
@@ -345,7 +394,6 @@ export class DerivWebSocketManager {
           
           await this.disconnect()
           // OTP URL is a complete wss:// URL — connect to it directly.
-          // This connection is pre-authenticated by the URL token.
           await this.connect(otpUrl, true)
           
           this.isAuthorized = true
@@ -420,11 +468,12 @@ export class DerivWebSocketManager {
       this.log("info", `[OTP] Fetching fresh OTP for ${this.currentAccountId} in ${delayMs}ms (attempt ${this.reconnectAttempts})...`)
       setTimeout(async () => {
         try {
+          // Reuses the already cached account ID. Never calls /accounts during reconnect.
           const otpRes = await this.fetchWithAuth(
             `/trading/v1/options/accounts/${this.currentAccountId}/otp`,
             { method: "POST" }
           )
-          const otpUrl = otpRes?.data?.url
+          const otpUrl = otpRes?.data?.url?.trim()
           if (!otpUrl) throw new Error("OTP response missing data.url")
           
           await this.disconnect()

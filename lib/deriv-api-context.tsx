@@ -127,12 +127,7 @@ export function DerivAPIProvider({ children }: { children: React.ReactNode }) {
         setIsConnected(connected)
         setIsAuthorized(authorized)
 
-        // Auto-reauthorize if connected but lost authorization
-        if (connected && !authorized && token && isLoggedIn) {
-          client.authorize(token).catch(err => {
-            console.error("[v0] Background re-auth failed:", err)
-          })
-        }
+
 
         if (connected && authorized && error) {
           setError(null)
