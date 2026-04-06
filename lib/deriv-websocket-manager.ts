@@ -107,7 +107,7 @@ export class DerivWebSocketManager {
 
   public isAuthorized = false
   private readonly appId = DERIV_CONFIG.APP_ID
-  private currentWsUrl: string = `${DERIV_API.WEBSOCKET}?app_id=${DERIV_CONFIG.APP_ID}`
+  private currentWsUrl: string = DERIV_API.WEBSOCKET
 
   private constructor() { }
 
@@ -153,7 +153,7 @@ export class DerivWebSocketManager {
       const settle = (fn: () => void) => { if (!settled) { settled = true; fn() } }
 
       try {
-        console.log("[v0] Connecting via DerivAPIBasic:", this.currentWsUrl)
+        console.log(`[v0] 🚀 Opening WebSocket: ${this.currentWsUrl}`)
         this.log("info", `Connecting to ${this.currentWsUrl}`)
         this.notifyConnectionStatus("reconnecting")
 
@@ -995,7 +995,9 @@ export class DerivWebSocketManager {
     const typeKey = type.toUpperCase() as keyof typeof DERIV_API.OPTIONS_WS
     const baseUrl: string = DERIV_API.OPTIONS_WS[typeKey]
     
-    const url = otpOrUrl ? `${baseUrl}?otp=${otpOrUrl}` : baseUrl
+    // Construct URL based on whether baseUrl already has a query string
+    const separator = baseUrl.includes("?") ? "&" : "?"
+    const url = otpOrUrl ? `${baseUrl}${separator}otp=${otpOrUrl}` : baseUrl
     return this.connect(url as string, true)
   }
 }

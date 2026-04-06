@@ -14,7 +14,7 @@
  * - Derivatives Base (optional): https://github.com/deriv-com/derivatives
  */
 
-export const DERIV_APP_ID = "110211" // Legacy WebSocket App ID
+export const DERIV_APP_ID = "32KGABH3pjSMkQ6JTotTG" // Modern Options V1 App ID
 export const OAUTH_CLIENT_ID = "32KGABH3pjSMkQ6JTotTG" // Modern PKCE OAuth Client ID
 
 // Get redirect URL based on environment
@@ -59,17 +59,17 @@ export const DERIV_PLATFORMS = {
 
 export const DERIV_API = {
   // Official Deriv API Endpoints
-  // Priority: V3 is most stable for developer testing (App ID 36300)
-  WEBSOCKET: "wss://api.derivws.com/trading/v1/options/ws/public",
-  WEBSOCKET_V3: "wss://ws.derivws.com/websockets/v3",
+  // Priority: V1 Options API is the modern standard
+  WEBSOCKET: `wss://api.derivws.com/trading/v1/options/ws/public?app_id=${DERIV_APP_ID}`,
+  WEBSOCKET_V3: `wss://ws.derivws.com/websockets/v3?app_id=${DERIV_APP_ID}`,
   OAUTH: "https://oauth.deriv.com/oauth2/authorize",
   // New Options API (REST)
   REST_BASE: "https://api.derivws.com",
   // New Options API (WebSocket - paths)
   OPTIONS_WS: {
-    DEMO: "wss://api.derivws.com/trading/v1/options/ws/demo",
-    REAL: "wss://api.derivws.com/trading/v1/options/ws/real",
-    PUBLIC: "wss://api.derivws.com/trading/v1/options/ws/public",
+    DEMO: `wss://api.derivws.com/trading/v1/options/ws/demo?app_id=${DERIV_APP_ID}`,
+    REAL: `wss://api.derivws.com/trading/v1/options/ws/real?app_id=${DERIV_APP_ID}`,
+    PUBLIC: `wss://api.derivws.com/trading/v1/options/ws/public?app_id=${DERIV_APP_ID}`,
   }
 } as const
 
