@@ -136,8 +136,22 @@ export function DerivAPIProvider({ children }: { children: React.ReactNode }) {
       }
     }, 3000)
 
+    // 4. Cross-Tab Synchronization
+    const handleStorageChange = (e: StorageEvent) => {
+      // Invalidate local state if accounts or active account changes in another tab
+      if (e.key?.startsWith("deriv_accounts_v1_") || e.key === "deriv_active_loginid") {
+        console.log(`[v0] 🔄 Syncing auth state from other tab (${e.key})...`)
+        if (token && isLoggedIn) {
+          syncConnection()
+        }
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+
     return () => {
       clearInterval(interval)
+      window.removeEventListener("storage", handleStorageChange)
       // Clean up the token-expiry hook when this effect re-runs
       const mgr = DerivWebSocketManager.getInstance()
       if (mgr.onTokenExpired === wsManager.onTokenExpired) {

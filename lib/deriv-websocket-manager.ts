@@ -304,7 +304,8 @@ export class DerivWebSocketManager {
         this.log("warning", "REST 401: access token expired. Notifying auth layer.")
         this.isAuthorized = false
         this.accessToken = null
-        this.accountsCache = null // Invalidate cache
+        this.accountsCache = null // Invalidate local cache
+        this.clearGlobalCache() // Invalidate global tab cache
         if (this.onTokenExpired) this.onTokenExpired()
         throw new Error("Access token expired (401). Please log in again.")
       }
@@ -327,23 +328,82 @@ export class DerivWebSocketManager {
   }
   /**
    * Internal helper to fetch accounts once per session with a promise-based mutex.
+   * Now includes localStorage synchronization to share state across multiple tabs.
    */
   private async getAccounts(): Promise<any[]> {
     if (this.accountsCache) return this.accountsCache
+    
+    // 1. Try reading from Global Cross-Tab Cache first
+    const tokenHash = this.accessToken ? this.accessToken.substring(0, 8) : "none"
+    const cacheKey = `deriv_accounts_v1_${tokenHash}`
+    const lockKey = `deriv_auth_lock_v1_${tokenHash}`
+    
+    try {
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        this.accountsCache = parsed
+        console.log("[v0] 🌐 Using Cross-Tab Cached Accounts.")
+        return parsed
+      }
+    } catch { /* SSR or parse error */ }
+
+    // 2. Check for Global Cross-Tab Lock (someone else is already fetching)
+    const MAX_WAIT = 15 // 15 seconds max wait for other tab
+    for (let i = 0; i < MAX_WAIT; i++) {
+       const lockTime = parseInt(localStorage.getItem(lockKey) || "0")
+       const now = Date.now()
+       
+       // If no lock or lock is stale (> 20s), we take it
+       if (!lockTime || now - lockTime > 20000) {
+         break
+       }
+       
+       // Someone else is fetching. Wait and check cache again.
+       console.log(`[v0] 🛰️ Waiting for other tab to finish /accounts fetch (${i+1}/${MAX_WAIT})...`)
+       await new Promise(resolve => setTimeout(resolve, 1000))
+       
+       try {
+         const reCached = localStorage.getItem(cacheKey)
+         if (reCached) {
+           const parsed = JSON.parse(reCached)
+           this.accountsCache = parsed
+           return parsed
+         }
+       } catch { /* ignore */ }
+    }
+
+    // 3. Perform the fetch (and hold the local promise-mutex too)
     if (this.accountsPromise) return this.accountsPromise
 
     this.accountsPromise = (async () => {
       try {
+        // Take the global lock
+        localStorage.setItem(lockKey, Date.now().toString())
+        
         const accountsRes = await this.fetchWithAuth("/trading/v1/options/accounts")
-        // API wraps data in { data: [...] }; fall back to raw array for forward-compat
-        this.accountsCache = accountsRes?.data ?? accountsRes ?? []
-        return this.accountsCache || []
+        const accounts = accountsRes?.data ?? accountsRes ?? []
+        
+        this.accountsCache = accounts
+        // Update global cache for other tabs
+        localStorage.setItem(cacheKey, JSON.stringify(accounts))
+        
+        return accounts || []
       } finally {
         this.accountsPromise = null
+        localStorage.removeItem(lockKey) // Release lock
       }
     })()
 
     return this.accountsPromise
+  }
+
+  private clearGlobalCache() {
+    try {
+      const tokenHash = this.accessToken ? this.accessToken.substring(0, 8) : "none"
+      localStorage.removeItem(`deriv_accounts_v1_${tokenHash}`)
+      localStorage.removeItem(`deriv_auth_lock_v1_${tokenHash}`)
+    } catch { /* ignore */ }
   }
 
   /**
@@ -397,6 +457,11 @@ export class DerivWebSocketManager {
           await this.connect(otpUrl, true)
           
           this.isAuthorized = true
+          
+          // Persist selected account for other tabs to pick up
+          try {
+            localStorage.setItem('deriv_active_loginid', this.currentAccountId || "")
+          } catch { /* ignore */ }
 
           // Synthesize legacy 'authorize' event to sync UI components (balances, etc.)
           const syntheticAuthorize = {
