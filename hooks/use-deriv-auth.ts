@@ -331,15 +331,16 @@ export function useDerivAuth() {
       // Build the standard authorization URL with all required PKCE parameters
       const params = new URLSearchParams({
         response_type: 'code',
-        app_id: DERIV_APP_ID, // Unified ID used by both WS and OAuth
+        client_id: OAUTH_CLIENT_ID, // Modern OAuth ID
         redirect_uri: DERIV_REDIRECT_URL,
         scope: 'trade account_manage',
         state: state,
         code_challenge: codeChallenge,
-        code_challenge_method: 'S256'
+        code_challenge_method: 'S256',
+        app_id: DERIV_APP_ID // Legacy App ID (ensures compatibility with WS tokens)
       })
 
-      const oauthUrl = `${DERIV_API.OAUTH}?${params.toString()}`
+      const oauthUrl = `https://auth.deriv.com/oauth2/auth?${params.toString()}`
 
       console.log("[v0] 🔐 Redirecting to Deriv OAuth URL:", oauthUrl)
       window.location.href = oauthUrl
