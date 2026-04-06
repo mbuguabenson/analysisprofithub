@@ -14,7 +14,7 @@
  * - Derivatives Base (optional): https://github.com/deriv-com/derivatives
  */
 
-export const DERIV_APP_ID = "36300" // Legacy WebSocket App ID
+export const DERIV_APP_ID = "110211" // Legacy WebSocket App ID
 export const OAUTH_CLIENT_ID = "32KGABH3pjSMkQ6JTotTG" // Modern PKCE OAuth Client ID
 
 // Get redirect URL based on environment
@@ -60,9 +60,8 @@ export const DERIV_PLATFORMS = {
 export const DERIV_API = {
   // Official Deriv API Endpoints
   // Priority: V3 is most stable for developer testing (App ID 36300)
-  WEBSOCKET: "wss://ws.derivws.com/websockets/v3",
+  WEBSOCKET: "wss://api.derivws.com/trading/v1/options/ws/public",
   WEBSOCKET_V3: "wss://ws.derivws.com/websockets/v3",
-  WEBSOCKET_FALLBACK_V3: "wss://ws.binaryws.com/websockets/v3",
   OAUTH: "https://oauth.deriv.com/oauth2/authorize",
   // New Options API (REST)
   REST_BASE: "https://api.derivws.com",

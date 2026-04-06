@@ -28,7 +28,11 @@ export class DerivRESTClient {
         const headers = new Headers(options.headers || {})
 
         headers.set("Deriv-App-ID", this.appId)
-        headers.set("Content-Type", "application/json")
+        
+        const hasBody = options.body !== undefined
+        if (hasBody) {
+            headers.set("Content-Type", "application/json")
+        }
 
         if (this.token) {
             headers.set("Authorization", `Bearer ${this.token}`)

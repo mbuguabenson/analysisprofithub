@@ -76,6 +76,19 @@ export function DerivAPIProvider({ children }: { children: React.ReactNode }) {
       setApiClient(globalAPIClient)
     }
 
+    // Register the 401 / token-expiry hook on the singleton WS manager.
+    // When any REST call (accounts or OTP) returns 401, the access token is
+    // expired — clear local storage and send the user back to login.
+    const wsManager = DerivWebSocketManager.getInstance()
+    wsManager.onTokenExpired = () => {
+      console.warn("[v0] 🔑 Access token expired (401). Clearing session and requesting re-login.")
+      localStorage.removeItem("deriv_api_token")
+      localStorage.removeItem("deriv_auth_token")
+      localStorage.removeItem("authToken")
+      localStorage.removeItem("clientToken")
+      auth.requestLogin()
+    }
+
     const client = globalAPIClient
 
     // 2. Handle Connection and Authorization
@@ -130,6 +143,11 @@ export function DerivAPIProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       clearInterval(interval)
+      // Clean up the token-expiry hook when this effect re-runs
+      const mgr = DerivWebSocketManager.getInstance()
+      if (mgr.onTokenExpired === wsManager.onTokenExpired) {
+        mgr.onTokenExpired = null
+      }
     }
   }, [token, isLoggedIn])
 

@@ -122,6 +122,10 @@ export class DerivWebSocketManager {
     return ++this.reqIdCounter
   }
 
+  public getAccountId(): string | null {
+    return this.currentAccountId
+  }
+
   // ─── Connection ────────────────────────────────────────────────────────────
 
   public async connect(url?: string, force = false): Promise<void> {
@@ -244,6 +248,12 @@ export class DerivWebSocketManager {
   }
 
   /**
+   * Callback invoked when a REST call returns 401 Unauthorized.
+   * Set by the auth layer (e.g. deriv-api-context) to trigger re-login.
+   */
+  public onTokenExpired: (() => void) | null = null
+
+  /**
    * Helper for authenticated REST API calls (Deriv V1)
    */
   private async fetchWithAuth(path: string, options: RequestInit = {}): Promise<any> {
@@ -253,11 +263,25 @@ export class DerivWebSocketManager {
     const headers = new Headers(options.headers)
     headers.set("Authorization", `Bearer ${this.accessToken}`)
     headers.set("Deriv-App-ID", this.appId)
-    headers.set("Content-Type", "application/json")
+    
+    const hasBody = options.body !== undefined
+    if (hasBody) {
+      headers.set("Content-Type", "application/json")
+    }
     
     console.log(`[v0] REST ${options.method || 'GET'} ${url}`)
     
     const response = await fetch(url, { ...options, headers })
+
+    // 401 = access_token expired — notify the auth layer to re-initiate login
+    if (response.status === 401) {
+      this.log("warning", "REST 401: access token expired. Notifying auth layer.")
+      this.isAuthorized = false
+      this.accessToken = null
+      if (this.onTokenExpired) this.onTokenExpired()
+      throw new Error("Access token expired (401). Please log in again.")
+    }
+
     if (!response.ok) {
       const errorText = await response.text()
       try {
@@ -286,124 +310,71 @@ export class DerivWebSocketManager {
     if (!token) return
     this.accessToken = token
     
-    // Check if token is likely a legacy token (starts with a1-)
-    const isLegacyToken = token.startsWith("a1-") || token.length < 40 
-    
-    // Pure V1 OTP flow enforcing REST Token Exchange!
-    const prioritizeLegacy = isLegacyToken
-
-    if (!prioritizeLegacy) {
-      try {
-        this.log("info", `Starting modern V1 Authorization for: ${token.substring(0, 5)}...`)
-        
-        // 1. Fetch available accounts via REST
-        const accountsRes = await this.fetchWithAuth("/trading/v1/options/accounts")
-        // API wraps data in { data: [...] }; fall back to raw array for forward-compat
-        const accounts: any[] = accountsRes?.data ?? accountsRes ?? []
-        
-        if (accounts.length > 0) {
-          // 2. Pick an account (prefer demo if available, otherwise first one)
-          const targetAccount = accounts.find((a: any) => a.account_type === 'demo') || accounts[0]
-          this.currentAccountId = targetAccount.account_id
-          this.log("info", `Selected account: ${this.currentAccountId} (${targetAccount.account_type})`)
-
-          // 3. Obtain OTP for this account
-          const otpRes = await this.fetchWithAuth(`/trading/v1/options/accounts/${this.currentAccountId}/otp`, {
-            method: "POST"
-          })
-          
-          const otpUrl = otpRes?.data?.url
-          if (otpUrl) {
-            this.log("info", "OTP obtained. Reconnecting to authenticated environment...")
-            this.currentEndpoint = targetAccount.account_type === 'demo' ? 'demo' : 'real'
-            
-            await this.disconnect()
-            // OTP URL is a complete wss:// URL — connect to it directly
-            await this.connect(otpUrl, true)
-            
-            this.isAuthorized = true
-
-            // Synthesize legacy 'authorize' event to sync UI components
-            const syntheticAuthorize = {
-              msg_type: "authorize",
-              authorize: {
-                loginid: targetAccount.account_id,
-                is_virtual: targetAccount.account_type === 'demo' ? 1 : 0,
-                currency: targetAccount.currency,
-                balance: parseFloat(targetAccount.balance || "0"),
-                landing_company_name: targetAccount.account_type,
-                account_list: accounts.map((acc: any) => ({
-                  loginid: acc.account_id,
-                  is_virtual: acc.account_type === 'demo' ? 1 : 0,
-                  currency: acc.currency,
-                  balance: parseFloat(acc.balance || "0")
-                }))
-              }
-            }
-            this.emit("authorize", syntheticAuthorize)
-            console.log(`[v0] Successfully authorized modern connection for ${this.currentAccountId}`)
-            return
-          }
-        }
-      } catch (e) {
-        console.warn("[v0] Modern Authorization failed, falling back to legacy:", e)
-      }
+    // If the current WebSocket URL already contains an OTP, the connection is already authenticated.
+    // Skip the REST handshake to avoid infinite loop or redundant calls.
+    if (this.ws?.url && this.ws.url.includes("otp=")) {
+      this.isAuthorized = true
+      console.log("[v0] Connection is already authenticated via OTP URL.")
+      return
     }
 
-    // FALLBACK: Direct WebSocket Authorization (Legacy Path)
     try {
-      this.log("info", `Using direct WebSocket authorization (V3) for token: ${token.substring(0, 5)}...`)
+      this.log("info", `Starting modern V1 Authorization for: ${token.substring(0, 5)}...`)
       
-      // For legacy tokens, we MUST use the standard V3 endpoint because Options V1 only supports OTP auth.
-      // We use binaryws.com which is the most compatible endpoint for legacy tokens.
-      const v3Url = `${DERIV_API.WEBSOCKET_FALLBACK_V3}?app_id=${this.appId}`;
+      // 1. Fetch available accounts via REST
+      const accountsRes = await this.fetchWithAuth("/trading/v1/options/accounts")
+      // API wraps data in { data: [...] }; fall back to raw array for forward-compat
+      const accounts: any[] = accountsRes?.data ?? accountsRes ?? []
       
-      // Force reconnect to V3 if we're not already on it or not connected at all
-      if (this.currentWsUrl !== v3Url || !this.isConnected()) {
-        console.log(`[v0] 🔄 Switching to V3 endpoint for legacy token: ${v3Url}`);
-        this.log("info", "Switching to compatible V3 endpoint (binaryws.com)")
-        await this.disconnect()
-        await this.connect(v3Url, true)
-      }
+      if (accounts.length > 0) {
+        // 2. Pick an account (prefer demo if available, otherwise first one)
+        const targetAccount = accounts.find((a: any) => a.account_type === 'demo') || accounts[0]
+        this.currentAccountId = targetAccount.account_id
+        this.log("info", `Selected account: ${this.currentAccountId} (${targetAccount.account_type})`)
 
-      // Send direct authorize request with a generous 30s timeout
-      this.log("info", "Sending V3 authorize request...")
-      const response = await this.sendAndWait({ authorize: token }, 30000)
-      
-      if (response.error) {
-        throw new Error(response.error.message)
-      }
+        // 3. Obtain OTP for this account
+        // Explicitly send no body to avoid 400 errors from strict servers
+        const otpRes = await this.fetchWithAuth(`/trading/v1/options/accounts/${this.currentAccountId}/otp`, {
+          method: "POST"
+        })
+        
+        const otpUrl = otpRes?.data?.url
+        if (otpUrl) {
+          this.log("info", "OTP obtained. Reconnecting to authenticated environment...")
+          this.currentEndpoint = targetAccount.account_type === 'demo' ? 'demo' : 'real'
+          
+          await this.disconnect()
+          // OTP URL is a complete wss:// URL — connect to it directly.
+          // This connection is pre-authenticated by the URL token.
+          await this.connect(otpUrl, true)
+          
+          this.isAuthorized = true
 
-      this.isAuthorized = true
-      const auth = response.authorize
-      this.currentAccountId = auth.loginid
-      this.currentEndpoint = auth.is_virtual ? "demo" : "real"
-      
-      // Synthesize a consistent event for account syncing
-      const syntheticAuthorize = {
-        msg_type: "authorize",
-        authorize: {
-          loginid: auth.loginid,
-          is_virtual: auth.is_virtual,
-          currency: auth.currency,
-          balance: parseFloat(auth.balance || "0"),
-          email: auth.email,
-          fullname: auth.fullname,
-          landing_company_name: auth.landing_company_name,
-          account_list: auth.account_list?.map((acc: any) => ({
-            loginid: acc.loginid,
-            is_virtual: acc.is_virtual,
-            currency: acc.currency,
-            balance: parseFloat(acc.balance || "0")
-          })) || []
+          // Synthesize legacy 'authorize' event to sync UI components (balances, etc.)
+          const syntheticAuthorize = {
+            msg_type: "authorize",
+            authorize: {
+              loginid: targetAccount.account_id,
+              is_virtual: targetAccount.account_type === 'demo' ? 1 : 0,
+              currency: targetAccount.currency,
+              balance: parseFloat(targetAccount.balance || "0"),
+              landing_company_name: targetAccount.account_type,
+              account_list: accounts.map((acc: any) => ({
+                loginid: acc.account_id,
+                is_virtual: acc.account_type === 'demo' ? 1 : 0,
+                currency: acc.currency,
+                balance: parseFloat(acc.balance || "0")
+              }))
+            }
+          }
+          this.emit("authorize", syntheticAuthorize)
+          console.log(`[v0] ✅ Successfully authorized modern connection for ${this.currentAccountId}`)
+          return
         }
       }
-      
-      this.emit("authorize", syntheticAuthorize)
-      this.log("info", `Successfully authorized via legacy V3 path for ${this.currentAccountId}`)
-      
+      throw new Error("No suitable options accounts found for this token.")
     } catch (e) {
-      console.error("[v0] All authorization attempts failed:", e)
+      console.error("[v0] Authorization failed:", e)
       this.log("error", `Authorization failed: ${e instanceof Error ? e.message : String(e)}`)
       this.isAuthorized = false
       throw e
@@ -440,8 +411,7 @@ export class DerivWebSocketManager {
     // If we are using modern V1 REST + OTP, always fetch a FRESH OTP URL for the
     // already-selected account. Re-using a stale OTP URL is the primary cause of
     // reconnect failures; the canonical reference implementation requires this.
-    if (this.accessToken && !this.accessToken.startsWith("a1-") && this.accessToken.length >= 40
-        && this.currentAccountId) {
+    if (this.accessToken && this.currentAccountId) {
       // Reference delays: [500, 1000, 2000, 4000, 8000]
       const otpDelays = [500, 1000, 2000, 4000, 8000]
       const delayMs = otpDelays[Math.min(this.reconnectAttempts, otpDelays.length - 1)]
@@ -455,8 +425,12 @@ export class DerivWebSocketManager {
           )
           const otpUrl = otpRes?.data?.url
           if (!otpUrl) throw new Error("OTP response missing data.url")
+          
+          await this.disconnect()
           await this.connect(otpUrl, true)
+          
           this.reconnectAttempts = 0
+          this.isAuthorized = true
           this.log("info", `[OTP] Reconnected successfully for ${this.currentAccountId}`)
         } catch (err) {
           this.log("error", `[OTP] Reconnection attempt failed: ${err}. Retrying...`)
@@ -464,12 +438,6 @@ export class DerivWebSocketManager {
         }
       }, delayMs)
       return
-    }
-
-    // Switch to fallback URL if primary fails after 3 attempts
-    if (this.reconnectAttempts === 3 && this.currentWsUrl.includes("ws.derivws.com")) {
-      console.log("[v0] Switching to fallback WebSocket URL due to repeated failures")
-      this.currentWsUrl = `${DERIV_API.WEBSOCKET_FALLBACK_V3}?app_id=${this.appId}`
     }
 
     this.reconnectAttempts++
@@ -802,12 +770,17 @@ export class DerivWebSocketManager {
   }
 
   public async unsubscribeAll() {
-    this.send({ forget_all: ["ticks"], req_id: this.getNextReqId() })
+    // Forget all subscription types the server may hold open
+    this.send({
+      forget_all: ["ticks", "balance", "proposal_open_contract", "transaction"],
+      req_id: this.getNextReqId()
+    })
     this.subscriptions.clear()
     this.subscriptionRefCount.clear()
     this.symbolToSubscriptionMap.clear()
     this.tickCallbacks.clear()
-    this.log("info", "Unsubscribed from all ticks")
+    this.activeSubscriptions.clear()
+    this.log("info", "Unsubscribed from all active subscriptions (ticks, balance, proposals, transactions)")
   }
 
   // ─── History ───────────────────────────────────────────────────────────────
@@ -1020,12 +993,7 @@ export class DerivWebSocketManager {
     }
 
     const typeKey = type.toUpperCase() as keyof typeof DERIV_API.OPTIONS_WS
-    let baseUrl: string = DERIV_API.OPTIONS_WS[typeKey]
-    
-    // If we are currently on fallback, adjust sub-endpoints too
-    if (this.currentWsUrl.includes("binaryws.com")) {
-      baseUrl = baseUrl.replace("api.derivws.com/trading/v1/options/ws", "ws.binaryws.com/websockets/v3")
-    }
+    const baseUrl: string = DERIV_API.OPTIONS_WS[typeKey]
     
     const url = otpOrUrl ? `${baseUrl}?otp=${otpOrUrl}` : baseUrl
     return this.connect(url as string, true)

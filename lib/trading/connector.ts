@@ -69,23 +69,31 @@ export class DerivConnector extends EventEmitter {
     }
 
     try {
-      const response = await this.sendAndWait({ authorize: token, app_id: DERIV_CONFIG.APP_ID }, "authorize", 10000)
+      this.log("info", "Authenticating bot trading session via modern REST+OTP flow...")
+      
+      // Use the manager's integrated auth flow (REST accounts -> OTP -> WS)
+      await this.manager.authorize(token)
 
-      if (response.authorize) {
-        this.authorized = true
-        this.connectionState.isAuthorized = true
-        this.loginId = response.authorize.loginid
-        this.accountCurrency = response.authorize.currency
-        console.log(`[v0] ✅ Authorized as ${this.loginId} (${this.accountCurrency})`)
-        this.emit("authorized", { loginId: this.loginId, currency: this.accountCurrency })
+      // Sync state with the manager
+      this.authorized = this.manager.isAuthorized
+      this.connectionState.isAuthorized = this.manager.isAuthorized
+      
+      if (this.authorized) {
+        this.loginId = this.manager.getAccountId()
+        // We'll rely on the manager's 'authorize' event to fill in the rest of the details
+        console.log(`[v0] ✅ Bot session authenticated as ${this.loginId}`)
       } else {
-        throw new Error(response.error?.message || "Authorization failed")
+        throw new Error("Manager failed to authorize session")
       }
     } catch (error) {
-      console.error("[v0] ❌ Authorization failed:", error)
+      console.error("[v0] ❌ Bot authorization failed:", error)
       this.connectionState.lastErrorMessage = `Auth error: ${error}`
       throw error
     }
+  }
+
+  private log(type: "info" | "error", message: string) {
+    console.log(`[v0][Connector] ${type.toUpperCase()}: ${message}`)
   }
 
   private handleMessage(data: any): void {
@@ -105,6 +113,12 @@ export class DerivConnector extends EventEmitter {
 
     // Emit events for known message types
     if (data.msg_type) {
+      if (data.msg_type === "authorize" && data.authorize) {
+        this.loginId = data.authorize.loginid
+        this.accountCurrency = data.authorize.currency
+        this.authorized = true
+        this.connectionState.isAuthorized = true
+      }
       this.emit(data.msg_type, data[data.msg_type] || data)
     }
     

@@ -198,47 +198,6 @@ export function useDerivAuth() {
     const acct1 = searchParams.get("acct1")
     const token1 = searchParams.get("token1")
 
-    // 1. Handle Legacy Multi-Account Redirect (token1, token2, etc)
-    if (acct1 && token1) {
-      console.log("[v0] 🏎️ Root: Detected legacy multi-token redirect")
-      const accountsMap: Record<string, string> = {}
-      let firstToken = ""
-      let firstAccountId = ""
-
-      for (let i = 1; i <= 10; i++) {
-        const acct = searchParams.get(`acct${i}`)
-        const token = searchParams.get(`token${i}`)
-        if (acct && token) {
-          accountsMap[acct] = token
-          if (!firstToken) {
-            firstToken = token
-            firstAccountId = acct
-          }
-        }
-      }
-
-      if (firstToken) {
-        localStorage.setItem("deriv_auth_tokens", JSON.stringify(accountsMap))
-        localStorage.setItem("deriv_api_token", firstToken)
-        localStorage.setItem("active_login_id", firstAccountId)
-        
-        window.history.replaceState({}, document.title, window.location.pathname)
-        
-        setToken(firstToken)
-        setActiveLoginId(firstAccountId)
-        setIsLoggedIn(true)
-        setAccounts(Object.keys(accountsMap).map(id => ({
-          id,
-          type: id.startsWith("VR") ? "Demo" : "Real",
-          currency: "USD",
-          balance: 0
-        })))
-        
-        connectWithToken(firstToken)
-        return
-      }
-    }
-
     // Standard session check
     const storedToken = localStorage.getItem("deriv_api_token")
     if (storedToken && storedToken.length > 10) {
@@ -355,7 +314,7 @@ export function useDerivAuth() {
 
   const logout = () => {
     if (typeof window === "undefined") return
-    manager.send({ forget_all: ["balance", "ticks", "proposal_open_contract"] })
+    manager.unsubscribeAll()
     localStorage.removeItem("deriv_api_token")
     localStorage.removeItem("deriv_auth_tokens")
     localStorage.removeItem("active_login_id")

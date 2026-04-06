@@ -33,24 +33,12 @@ export class GlobalTradeExecutor {
 
   async connect(): Promise<void> {
     try {
+      console.log("[v0] GlobalTradeExecutor connecting and authenticating...")
       await this.manager.connect()
-      await new Promise<void>((resolve, reject) => {
-        const authorizeHandler = (data: any) => {
-          if (data.msg_type === "authorize" && !data.error) {
-            console.log("[v0] ✅ Trade executor authorized")
-            this.manager.off("*", authorizeHandler)
-            resolve()
-          } else if (data.error && data.msg_type === "authorize") {
-            console.error("[v0] ❌ Authorization failed:", data.error.message)
-            this.manager.off("*", authorizeHandler)
-            reject(new Error(data.error.message))
-          }
-        }
-        this.manager.on("*", authorizeHandler)
-        this.manager.send({ authorize: this.apiToken, app_id: DERIV_CONFIG.APP_ID })
-      })
+      await this.manager.authorize(this.apiToken)
+      console.log("[v0] ✅ GlobalTradeExecutor successfully authenticated via OTP flow")
     } catch (error) {
-      console.error("[v0] GlobalTradeExecutor connect error:", error)
+      console.error("[v0] GlobalTradeExecutor connect/auth error:", error)
       throw error
     }
   }
