@@ -14,8 +14,8 @@
  * - Derivatives Base (optional): https://github.com/deriv-com/derivatives
  */
 
-export const DERIV_APP_ID = "110211"
-export const OAUTH_CLIENT_ID = "32KGABH3pjSMkQ6JTotTG"
+export const DERIV_APP_ID = "36300"
+export const OAUTH_CLIENT_ID = "36300"
 
 // Get redirect URL based on environment
 // This must match the PRE-REGISTERED redirect URIs in the Deriv OAuth dashboard (api.deriv.com)
@@ -32,7 +32,7 @@ const getOAuthRedirectUrl = () => {
   if (typeof window !== "undefined") {
     // If we're on localhost but want to force production test
     if (window.location.hostname === "localhost") {
-      return "http://localhost:3000/api/auth/callback"
+      return "https://localhost:8443/"
     }
     return `${window.location.origin}/api/auth/callback`
   }
@@ -57,15 +57,13 @@ export const DERIV_PLATFORMS = {
   COPYTRADING: "https://app.deriv.com/copy-trading",
 } as const
 
-// Official Deriv API Endpoints
 export const DERIV_API = {
-  // Legacy V3 Endpoints (kept for fallback/reference if needed)
+  // Official Deriv API Endpoints
+  // Priority: V3 is most stable for developer testing (App ID 36300)
+  WEBSOCKET: "wss://ws.derivws.com/websockets/v3",
   WEBSOCKET_V3: "wss://ws.derivws.com/websockets/v3",
   WEBSOCKET_FALLBACK_V3: "wss://ws.binaryws.com/websockets/v3",
-  
-  // V4 API Endpoints
-  WEBSOCKET: "wss://api.derivws.com/trading/v1/options/ws/public",
-  OAUTH: "https://auth.deriv.com/oauth2/auth",
+  OAUTH: "https://oauth.deriv.com/oauth2/authorize",
   // New Options API (REST)
   REST_BASE: "https://api.derivws.com",
   // New Options API (WebSocket - paths)

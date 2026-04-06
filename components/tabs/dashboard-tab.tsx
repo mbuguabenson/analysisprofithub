@@ -18,6 +18,9 @@ import {
   AlertCircle,
   Clock,
   Eye,
+  ArrowUpRight,
+  ShieldCheck,
+  RefreshCw
 } from "lucide-react"
 
 interface OpenContract {
@@ -45,6 +48,7 @@ export function DashboardTab({ theme = "dark" }: DashboardTabProps) {
   const [isOtpConnected, setIsOtpConnected] = useState(false)
   const [connectionLog, setConnectionLog] = useState<string[]>([])
   const [marketData, setMarketData] = useState<Record<string, any>>({})
+  const [showBalance, setShowBalance] = useState(true)
 
   const balance = globalContext.balance?.amount || 0
   const currency = globalContext.balance?.currency || "USD"
@@ -59,7 +63,6 @@ export function DashboardTab({ theme = "dark" }: DashboardTabProps) {
   // Handle WebSocket messages for contract updates
   useEffect(() => {
     const handleMessage = (data: any) => {
-      // Handle contract updates (live profit/loss)
       if (data.msg_type === "proposal_open_contract") {
         const contract = data.proposal_open_contract
         setOpenContracts((prev) => {
@@ -98,7 +101,6 @@ export function DashboardTab({ theme = "dark" }: DashboardTabProps) {
         }
       }
 
-      // Handle ticks for market data
       if (data.msg_type === "tick") {
         const tick = data.tick
         setMarketData((prev) => ({
@@ -123,25 +125,16 @@ export function DashboardTab({ theme = "dark" }: DashboardTabProps) {
     setTotalProfit(total)
   }, [openContracts])
 
-  // Attempt OAuth2 + OTP connection if logged in
+  // The Manager auto-handles OTP REST flow under the hood now. We just check if it's authorized.
   useEffect(() => {
-    if (isLoggedIn && authContext.oauthAccessToken && authContext.accountId && !isOtpConnected) {
-      attemptOtpConnection()
+    if (isLoggedIn && globalContext.isAuthorized && !isOtpConnected) {
+      setIsOtpConnected(true)
+      addLog("✅ Secure Manager Link connected!")
+    } else if (!globalContext.isAuthorized && isOtpConnected) {
+      setIsOtpConnected(false)
     }
-  }, [isLoggedIn, authContext.oauthAccessToken, authContext.accountId, isOtpConnected])
+  }, [isLoggedIn, globalContext.isAuthorized, isOtpConnected])
 
-  const attemptOtpConnection = async () => {
-    try {
-      addLog("🔐 Attempting OAuth2 + OTP connection...")
-      if (authContext.connectWithOauth && authContext.oauthAccessToken && authContext.accountId) {
-        await authContext.connectWithOauth(authContext.oauthAccessToken, authContext.accountId)
-        setIsOtpConnected(true)
-        addLog("✅ OTP-authenticated WebSocket connected!")
-      }
-    } catch (error) {
-      addLog(`❌ OTP connection failed: ${error instanceof Error ? error.message : "Unknown error"}`)
-    }
-  }
 
   const requestProposal = () => {
     if (!manager.isConnected) {
@@ -158,6 +151,7 @@ export function DashboardTab({ theme = "dark" }: DashboardTabProps) {
       duration: 5,
       duration_unit: "t",
       symbol: "1HZ100V",
+      underlying_symbol: "1HZ100V",
       req_id: 1,
     })
     addLog("📨 Proposal request sent")
@@ -177,255 +171,254 @@ export function DashboardTab({ theme = "dark" }: DashboardTabProps) {
   }
 
   return (
-    <div className={`space-y-6 p-6 ${theme === "dark" ? "bg-slate-950/50" : "bg-gray-50"}`}>
-      {/* Header - Status & Balance */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Connection Status */}
-        <Card
-          className={`p-6 border ${
-            theme === "dark"
-              ? `${isConnected ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30"}`
-              : `${isConnected ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`
-          }`}
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <p className={`text-sm font-semibold ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-                API Connection
-              </p>
-              <p
-                className={`text-2xl font-bold mt-2 ${
-                  isConnected
-                    ? theme === "dark"
-                      ? "text-green-400"
-                      : "text-green-600"
-                    : theme === "dark"
-                      ? "text-red-400"
-                      : "text-red-600"
-                }`}
-              >
-                {isConnected ? "Connected" : "Disconnected"}
-              </p>
-            </div>
-            {isConnected ? (
-              <CheckCircle className={`w-8 h-8 ${theme === "dark" ? "text-green-400" : "text-green-600"}`} />
-            ) : (
-              <AlertCircle className={`w-8 h-8 ${theme === "dark" ? "text-red-400" : "text-red-600"}`} />
-            )}
+    <div className={`space-y-8 p-6 lg:p-8 animate-in fade-in slide-in-from-bottom-4 duration-700`}>
+      {/* ─── Premium Header Stat Cards ─── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        {/* API Connection Card */}
+        <div className={`relative overflow-hidden rounded-[2rem] border transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl ${
+          isConnected 
+          ? "bg-emerald-500/5 border-emerald-500/20 shadow-emerald-500/10" 
+          : "bg-rose-500/5 border-rose-500/20 shadow-rose-500/10"
+        }`}>
+          <div className="absolute top-0 right-0 p-6 opacity-10">
+            <Zap className="h-12 w-12" />
           </div>
-        </Card>
+          <div className="relative p-6 flex flex-col justify-between h-full">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className={`w-2 h-2 rounded-full ${isConnected ? "bg-emerald-400 animate-pulse" : "bg-rose-400"}`} />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Network Status</span>
+              </div>
+              <h3 className={`text-2xl font-black tracking-tighter ${isConnected ? "text-emerald-400" : "text-rose-400"}`}>
+                {isConnected ? "SYSTEM ONLINE" : "OFFLINE"}
+              </h3>
+            </div>
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Latency: <span className="text-white/60">24ms</span></span>
+              <ShieldCheck className={`h-5 w-5 ${isConnected ? "text-emerald-500/50" : "text-rose-500/50"}`} />
+            </div>
+          </div>
+        </div>
 
-        {/* OTP Status */}
-        <Card
-          className={`p-6 border ${
-            theme === "dark"
-              ? `${isOtpConnected ? "bg-blue-500/10 border-blue-500/30" : "bg-slate-500/10 border-slate-500/30"}`
-              : `${isOtpConnected ? "bg-blue-50 border-blue-200" : "bg-gray-100 border-gray-300"}`
-          }`}
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <p className={`text-sm font-semibold ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-                OTP WebSocket
-              </p>
-              <p
-                className={`text-2xl font-bold mt-2 ${
-                  isOtpConnected
-                    ? theme === "dark"
-                      ? "text-blue-400"
-                      : "text-blue-600"
-                    : theme === "dark"
-                      ? "text-slate-400"
-                      : "text-gray-600"
-                }`}
-              >
-                {isOtpConnected ? "Active" : "Idle"}
-              </p>
-            </div>
-            <Zap className={`w-8 h-8 ${isOtpConnected ? (theme === "dark" ? "text-blue-400" : "text-blue-600") : theme === "dark" ? "text-slate-500" : "text-gray-400"}`} />
+        {/* OTP Status Card (The "Bridge") */}
+        <div className={`relative overflow-hidden rounded-[2rem] border transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl ${
+          isOtpConnected 
+          ? "bg-blue-500/5 border-blue-500/20 shadow-blue-500/10" 
+          : "bg-white/[0.02] border-white/5"
+        }`}>
+          <div className="absolute top-0 right-0 p-6 opacity-10">
+            <Activity className="h-12 w-12" />
           </div>
-        </Card>
+          <div className="relative p-6 flex flex-col justify-between h-full">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className={`w-2 h-2 rounded-full ${isOtpConnected ? "bg-blue-400 animate-pulse" : "bg-white/20"}`} />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Secure Auth Bridge</span>
+              </div>
+              <h3 className={`text-2xl font-black tracking-tighter ${isOtpConnected ? "text-blue-400" : "text-white/20"}`}>
+                {isOtpConnected ? "VERIFIED TUNNEL" : "TUNNEL IDLE"}
+              </h3>
+            </div>
+            <div className="mt-4 flex items-center justify-between text-[10px] font-bold text-white/30 uppercase tracking-widest">
+              <span>Token: <span className="text-white/60 font-mono">v4.OTP-****</span></span>
+            </div>
+          </div>
+        </div>
 
-        {/* Balance */}
-        <Card
-          className={`p-6 border ${
-            theme === "dark"
-              ? "bg-cyan-500/10 border-cyan-500/30"
-              : "bg-cyan-50 border-cyan-200"
-          }`}
-        >
-          <div className="flex items-start justify-between">
-            <div>
-              <p className={`text-sm font-semibold ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-                Total Balance
-              </p>
-              <p
-                className={`text-2xl font-bold mt-2 ${
-                  theme === "dark" ? "text-cyan-400" : "text-cyan-600"
-                }`}
-              >
-                {currency} {balance.toFixed(2)}
+        {/* Main Balance Card */}
+        <div className="relative group overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-indigo-600 to-blue-700 p-1 shadow-[0_20px_50px_rgba(37,99,235,0.2)] border border-white/10">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.1)_0%,transparent_50%)]" />
+          <div className="relative bg-slate-950/40 backdrop-blur-3xl rounded-[2.3rem] p-7 flex flex-col justify-between h-full">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/50">Primary Liquidity</span>
+              <Wallet className="h-5 w-5 text-blue-400/50" />
+            </div>
+            <div className="mt-4">
+              <div className="flex items-baseline gap-3">
+                <span className="text-5xl font-black text-white tracking-tighter tabular-nums drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+                  {showBalance ? balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "••••••"}
+                </span>
+                <span className="text-sm font-black text-indigo-400 uppercase tracking-widest bg-indigo-500/10 px-2 py-1 rounded-md leading-none">{currency}</span>
+              </div>
+              <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" /> Live Balance Syncing
               </p>
             </div>
-            <Wallet className={`w-8 h-8 ${theme === "dark" ? "text-cyan-400" : "text-cyan-600"}`} />
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* Profit & Loss */}
-      <Card
-        className={`p-6 border ${
-          theme === "dark"
-            ? `${totalProfit >= 0 ? "bg-green-500/10 border-green-500/30" : "bg-red-500/10 border-red-500/30"}`
-            : `${totalProfit >= 0 ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`
-        }`}
-      >
-        <div className="flex items-center gap-4">
-          {totalProfit >= 0 ? (
-            <TrendingUp className={`w-10 h-10 ${theme === "dark" ? "text-green-400" : "text-green-600"}`} />
-          ) : (
-            <TrendingDown className={`w-10 h-10 ${theme === "dark" ? "text-red-400" : "text-red-600"}`} />
-          )}
-          <div>
-            <p className={`text-sm font-semibold ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-              Total P&L (Open Contracts)
-            </p>
-            <p
-              className={`text-3xl font-bold mt-1 ${
-                totalProfit >= 0
-                  ? theme === "dark"
-                    ? "text-green-400"
-                    : "text-green-600"
-                  : theme === "dark"
-                    ? "text-red-400"
-                    : "text-red-600"
-              }`}
-            >
-              {currency} {totalProfit.toFixed(2)}
-            </p>
+      {/* ─── P&L Performance Banner ─── */}
+      <div className={`relative overflow-hidden rounded-[2.5rem] border transition-all duration-700 ${
+        totalProfit >= 0 
+        ? "bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border-emerald-500/20 shadow-emerald-500/5" 
+        : "bg-gradient-to-r from-rose-500/10 via-rose-500/5 to-transparent border-rose-500/20 shadow-rose-500/5"
+      }`}>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.02)_0%,transparent_100%)]" />
+        <div className="relative p-8 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex items-center gap-6">
+            <div className={`p-5 rounded-[2rem] border shadow-2xl transition-transform duration-500 hover:rotate-12 ${
+              totalProfit >= 0 
+              ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-400" 
+              : "bg-rose-500/20 border-rose-500/30 text-rose-400"
+            }`}>
+              {totalProfit >= 0 ? <TrendingUp className="h-10 w-10" /> : <TrendingDown className="h-10 w-10" />}
+            </div>
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.4em] text-white/30 mb-2">Aggregate Portfolio Performance</p>
+              <div className="flex items-baseline gap-3">
+                <span className={`text-6xl font-black tracking-tighter tabular-nums drop-shadow-2xl ${totalProfit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                  {totalProfit >= 0 ? "+" : ""}{totalProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="text-xl font-bold text-white/40 uppercase tracking-widest">{currency}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-4 justify-center md:justify-end">
+            <div className="px-5 py-2.5 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center gap-3">
+              <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Active Orders</span>
+              <span className="text-lg font-black text-white">{openContracts.length}</span>
+            </div>
+            <div className={`px-5 py-2.5 rounded-2xl border flex items-center gap-3 ${totalProfit >= 0 ? "bg-emerald-400/10 border-emerald-400/20 text-emerald-400" : "bg-amber-400/10 border-amber-400/20 text-amber-400"}`}>
+              <span className="text-[9px] font-black uppercase tracking-widest">Yield Momentum</span>
+              <span className="text-lg font-black">{totalProfit >= 0 ? "BULLISH" : "STABLE"}</span>
+            </div>
           </div>
         </div>
-      </Card>
+      </div>
 
-      {/* Open Contracts */}
-      <Card className={`p-6 border ${theme === "dark" ? "bg-slate-900/50 border-slate-800" : "bg-white border-gray-200"}`}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className={`text-lg font-bold flex items-center gap-2 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
-            <BarChart3 className="w-5 h-5" />
-            Open Contracts
-          </h3>
-          {isOtpConnected && (
-            <Button onClick={requestProposal} className="bg-blue-600 hover:bg-blue-700 text-white">
-              Request Proposal
-            </Button>
-          )}
-        </div>
-
-        {openContracts.length === 0 ? (
-          <p className={`text-center py-8 ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-            No open contracts. Connect and trade to see live updates here.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {openContracts.map((contract) => (
-              <div
-                key={contract.contract_id}
-                className={`p-4 rounded-lg border flex items-center justify-between ${
-                  theme === "dark"
-                    ? "bg-slate-800/50 border-slate-700"
-                    : "bg-gray-50 border-gray-300"
-                }`}
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <Badge
-                      className={`${
-                        contract.status === "open"
-                          ? "bg-blue-500/30 text-blue-300"
-                          : contract.status === "won"
-                            ? "bg-green-500/30 text-green-300"
-                            : "bg-red-500/30 text-red-300"
-                      }`}
-                    >
-                      {contract.status.toUpperCase()}
-                    </Badge>
-                    <p className={`text-sm font-semibold ${theme === "dark" ? "text-cyan-400" : "text-cyan-600"}`}>
-                      Contract #{contract.contract_id}
-                    </p>
-                    <p className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-                      {contract.contract_type}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className={`text-xs ${theme === "dark" ? "text-slate-500" : "text-gray-500"}`}>Entry</p>
-                      <p className={`font-mono font-semibold ${theme === "dark" ? "text-slate-300" : "text-gray-700"}`}>
-                        {contract.entry_price ? `${contract.entry_price.toFixed(4)}` : "---"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className={`text-xs ${theme === "dark" ? "text-slate-500" : "text-gray-500"}`}>Current</p>
-                      <p className={`font-mono font-semibold ${theme === "dark" ? "text-slate-300" : "text-gray-700"}`}>
-                        {contract.current_spot ? `${contract.current_spot.toFixed(4)}` : "---"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className={`text-xs ${theme === "dark" ? "text-slate-500" : "text-gray-500"}`}>P&L</p>
-                      <p
-                        className={`font-mono font-bold ${
-                          contract.profit && contract.profit >= 0
-                            ? theme === "dark"
-                              ? "text-green-400"
-                              : "text-green-600"
-                            : theme === "dark"
-                              ? "text-red-400"
-                              : "text-red-600"
-                        }`}
-                      >
-                        ${contract.profit?.toFixed(2) || "0.00"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                {contract.status === "open" && (
-                  <Button
-                    onClick={() => closeContract(contract.contract_id)}
-                    className="ml-4 bg-red-600 hover:bg-red-700 text-white text-sm"
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* ─── Open Contracts Console ─── */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] overflow-hidden shadow-[0_30px_60px_rgba(0,0,0,0.4)]">
+            <div className="px-8 py-7 border-b border-white/[0.05] flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                  <BarChart3 className="h-5 w-5 text-blue-500" /> Live Asset Hub
+                </h3>
+                <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.2em] mt-1">Real-time trade synchronization</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {isOtpConnected && (
+                  <button 
+                    onClick={requestProposal} 
+                    className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl transition-all shadow-lg shadow-blue-600/20 active:scale-95"
                   >
-                    Close
-                  </Button>
+                    DEPLOY PROPOSAL
+                  </button>
                 )}
               </div>
-            ))}
+            </div>
+            <div className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
+              {openContracts.length === 0 ? (
+                <div className="py-20 flex flex-col items-center justify-center text-center">
+                  <div className="w-16 h-16 bg-white/5 rounded-[1.5rem] flex items-center justify-center mb-6">
+                    <Clock className="h-8 w-8 text-white/10" />
+                  </div>
+                  <h4 className="text-lg font-black text-white/40 uppercase tracking-tight">System Ready</h4>
+                  <p className="text-white/20 text-sm mt-2 max-w-sm font-medium">Initialize a trajectory to begin populating the asset telemetry interface.</p>
+                </div>
+              ) : (
+                openContracts.map((contract) => (
+                  <div
+                    key={contract.contract_id}
+                    className={`group relative p-6 rounded-[2rem] border transition-all duration-500 ${
+                      theme === "dark"
+                        ? "bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10 shadow-xl"
+                        : "bg-gray-50 border-gray-300"
+                    }`}
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className={`px-3 py-1 rounded-full text-[9px] font-black tracking-widest uppercase border ${
+                            contract.status === "open"
+                              ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                              : contract.status === "won"
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                : "bg-rose-500/10 text-rose-400 border-rose-500/20"
+                          }`}>
+                            {contract.status === "open" && <span className="inline-block w-1 h-1 rounded-full bg-current mr-1 animate-pulse" />}
+                            {contract.status}
+                          </div>
+                          <span className="text-[10px] font-black text-white/20 tracking-tighter uppercase font-mono">#{contract.contract_id}</span>
+                          <span className="text-[10px] font-black text-white/50 tracking-widest uppercase">{contract.contract_type}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-6">
+                          <div>
+                            <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">ENTRY ORIGIN</p>
+                            <p className="text-sm font-black text-white font-mono tracking-tighter">
+                              {contract.entry_price ? contract.entry_price.toFixed(4) : "---"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">CURRENT TELEMETRY</p>
+                            <p className="text-sm font-black text-white font-mono tracking-tighter">
+                               {contract.current_spot ? Number(contract.current_spot).toFixed(4) : "---"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">DELTA PROFIT</p>
+                            <p className={`text-sm font-black font-mono tracking-tighter ${contract.profit && contract.profit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                              ${contract.profit?.toFixed(2) || "0.00"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      {contract.status === "open" && (
+                        <button
+                          onClick={() => closeContract(contract.contract_id)}
+                          className="px-6 py-3 bg-rose-500/10 hover:bg-rose-500 border border-rose-500/20 text-rose-500 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg hover:shadow-rose-500/20"
+                        >
+                          LIQUIDATE
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        )}
-      </Card>
-
-      {/* Connection Log */}
-      <Card className={`p-6 border ${theme === "dark" ? "bg-slate-900/50 border-slate-800" : "bg-white border-gray-200"}`}>
-        <h3 className={`text-lg font-bold flex items-center gap-2 mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
-          <Activity className="w-5 h-5" />
-          Connection Log
-        </h3>
-        <div className="space-y-2 max-h-40 overflow-y-auto">
-          {connectionLog.length === 0 ? (
-            <p className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-gray-600"}`}>
-              Waiting for events...
-            </p>
-          ) : (
-            connectionLog.map((log, idx) => (
-              <p
-                key={idx}
-                className={`text-xs font-mono ${
-                  theme === "dark" ? "text-slate-400" : "text-gray-600"
-                }`}
-              >
-                {log}
-              </p>
-            ))
-          )}
         </div>
-      </Card>
+
+        {/* ─── Real-time Event Stream ─── */}
+        <div className="space-y-6">
+          <div className="bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] overflow-hidden shadow-2xl h-full flex flex-col">
+            <div className="px-8 py-7 border-b border-white/[0.05] flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+                  <Activity className="h-5 w-5 text-amber-500" /> Event Stream
+                </h3>
+                <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.2em] mt-1">Live Telemetry Ledger</p>
+              </div>
+            </div>
+            <div className="p-6 flex-1 space-y-4 max-h-[400px] overflow-y-auto font-mono text-[10px]">
+              {connectionLog.length === 0 ? (
+                <div className="flex items-center justify-center h-full text-white/20 uppercase font-black tracking-widest">
+                  Awaiting signal...
+                </div>
+              ) : (
+                connectionLog.map((log, idx) => (
+                  <div key={idx} className="flex gap-4 p-2 rounded-lg bg-white/[0.02] border border-white/[0.03] animate-in fade-in slide-in-from-right-2">
+                    <span className="text-white/20 shrink-0">[{idx.toString().padStart(2, '0')}]</span>
+                    <span className="text-white/60 leading-relaxed">{log}</span>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="p-6 mt-auto border-t border-white/[0.05] bg-white/[0.01]">
+                <div className="flex items-center justify-between">
+                    <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Buffer Status</span>
+                    <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-1.5">
+                        <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" /> SYNCED
+                    </span>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -32,6 +32,7 @@ export class CleanTradeEngine {
     // Build proposal request
     const proposalRequest: any = {
       symbol: params.symbol,
+      underlying_symbol: params.symbol, // V1 Options API compatibility
       contract_type: params.contractType,
       amount: params.stake,
       basis: "stake",

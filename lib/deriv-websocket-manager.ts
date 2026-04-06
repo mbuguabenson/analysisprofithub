@@ -107,7 +107,7 @@ export class DerivWebSocketManager {
 
   public isAuthorized = false
   private readonly appId = DERIV_CONFIG.APP_ID
-  private currentWsUrl: string = DERIV_API.OPTIONS_WS.PUBLIC
+  private currentWsUrl: string = `${DERIV_API.WEBSOCKET}?app_id=${DERIV_CONFIG.APP_ID}`
 
   private constructor() { }
 
@@ -287,8 +287,12 @@ export class DerivWebSocketManager {
     
     // Check if token is likely a legacy token (starts with a1-)
     const isLegacyToken = token.startsWith("a1-") || token.length < 40 
+    
+    // On localhost, we prioritize the standard "authorization method" (V3)
+    const isLocalhost = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+    const prioritizeLegacy = isLegacyToken || isLocalhost
 
-    if (!isLegacyToken) {
+    if (!prioritizeLegacy) {
       try {
         this.log("info", `Starting modern V1 Authorization for: ${token.substring(0, 5)}...`)
         

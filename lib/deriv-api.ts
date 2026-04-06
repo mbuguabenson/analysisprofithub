@@ -333,10 +333,12 @@ export class DerivAPIClient {
       throw new Error("Invalid symbol: Symbol cannot be empty")
     }
 
+    // Send both `symbol` (V3) and `underlying_symbol` (V1 Options API) for cross-version compatibility
     const proposalReq: any = {
       proposal: 1,
       ...validatedParams,
       symbol: validatedParams.symbol,
+      underlying_symbol: validatedParams.symbol,
       basis: validatedParams.basis || "stake",
     }
 

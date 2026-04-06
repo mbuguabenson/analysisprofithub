@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import { DerivWebSocketManager } from "@/lib/deriv-websocket-manager"
-import { DERIV_CONFIG, DERIV_API, OAUTH_CLIENT_ID, DERIV_REDIRECT_URL } from "@/lib/deriv-config"
-import { generateCodeVerifier, generateCodeChallenge, generateState } from "@/lib/pkce"
+import { DERIV_APP_ID, DERIV_API, DERIV_REDIRECT_URL } from "@/lib/deriv-config"
 
 interface Balance {
   amount: number
@@ -37,11 +36,12 @@ export function useDerivAuth() {
   const [accountCode, setAccountCode] = useState<string>("")
   const [accounts, setAccounts] = useState<Account[]>(() => {
     const tokens = getStored("deriv_auth_tokens", {})
+    const lastBalances = getStored("deriv_last_balances", {})
     return Object.keys(tokens).map(id => ({
       id,
       type: id.startsWith("VR") ? "Demo" : "Real",
-      currency: "USD",
-      balance: 0
+      currency: lastBalances[id]?.currency || "USD",
+      balance: lastBalances[id]?.balance || 0
     }))
   })
   const [activeLoginId, setActiveLoginId] = useState<string | null>(() => getStored("active_login_id", null))
@@ -76,6 +76,7 @@ export function useDerivAuth() {
             localStorage.removeItem("deriv_api_token")
             localStorage.removeItem("deriv_auth_tokens")
             localStorage.removeItem("active_login_id")
+            localStorage.removeItem("deriv_last_balances")
 
             setShowTokenModal(true)
           }
@@ -98,12 +99,30 @@ export function useDerivAuth() {
           }
 
           if (authorize.account_list && Array.isArray(authorize.account_list)) {
-            const formatted = authorize.account_list.map((acc: any) => ({
-              id: acc.loginid,
-              type: acc.is_virtual ? "Demo" : "Real",
-              currency: acc.currency,
-              balance: Number(acc.balance) || 0,
-            }))
+            const lastBalancesMap = getStored("deriv_last_balances", {})
+            const formatted = authorize.account_list.map((acc: any) => {
+              const apiBalance = Number(acc.balance) || 0
+              // Always trust the active account's new balance. For inactive accounts, 
+              // if API returns 0, try to use the last known good balance to avoid wiping it.
+              const finalBalance = (acc.loginid === authorize.loginid || apiBalance > 0) 
+                 ? apiBalance 
+                 : (lastBalancesMap[acc.loginid]?.balance || 0)
+
+              return {
+                id: acc.loginid,
+                type: acc.is_virtual ? "Demo" : "Real",
+                currency: acc.currency,
+                balance: finalBalance,
+              }
+            })
+            
+            // Cache these balanced
+            const balanceMap: Record<string, { balance: number, currency: string }> = {}
+            formatted.forEach((f: Account) => {
+              balanceMap[f.id] = { balance: f.balance, currency: f.currency }
+            })
+            localStorage.setItem("deriv_last_balances", JSON.stringify(balanceMap))
+            
             setAccounts(formatted)
           }
 
@@ -126,12 +145,23 @@ export function useDerivAuth() {
           })
         }
 
-        setAccounts(prev => prev.map(acc => {
-          if (acc.id === msgLoginId) {
-            return { ...acc, balance: Number(data.balance.balance) }
-          }
-          return acc
-        }))
+        setAccounts(prev => {
+          const next = prev.map(acc => {
+            if (acc.id === msgLoginId) {
+                return { ...acc, balance: Number(data.balance.balance) }
+            }
+            return acc
+          })
+          
+          // Persistence
+          const balanceMap = getStored("deriv_last_balances", {})
+          next.forEach(n => {
+            balanceMap[n.id] = { balance: n.balance, currency: n.currency }
+          })
+          localStorage.setItem("deriv_last_balances", JSON.stringify(balanceMap))
+          
+          return next
+        })
       }
     }
 
@@ -161,13 +191,16 @@ export function useDerivAuth() {
   useEffect(() => {
     if (typeof window === "undefined") return
 
-    // Legacy Redirect Listener (Handles redirects to root instead of /api/auth/callback)
+    // Redirect Listener (Handles redirects to root instead of /api/auth/callback)
     const searchParams = new URLSearchParams(window.location.search)
+    const code = searchParams.get("code")
+    const state = searchParams.get("state")
     const acct1 = searchParams.get("acct1")
     const token1 = searchParams.get("token1")
 
+    // 1. Handle Legacy Multi-Account Redirect (token1, token2, etc)
     if (acct1 && token1) {
-      console.log("[v0] 🏎️ Root: Detected legacy redirect parameters")
+      console.log("[v0] 🏎️ Root: Detected legacy multi-token redirect")
       const accountsMap: Record<string, string> = {}
       let firstToken = ""
       let firstAccountId = ""
@@ -189,10 +222,8 @@ export function useDerivAuth() {
         localStorage.setItem("deriv_api_token", firstToken)
         localStorage.setItem("active_login_id", firstAccountId)
         
-        // Clean URL
         window.history.replaceState({}, document.title, window.location.pathname)
         
-        // Immediately sync state to prevent flash of 'not logged in'
         setToken(firstToken)
         setActiveLoginId(firstAccountId)
         setIsLoggedIn(true)
@@ -262,37 +293,11 @@ export function useDerivAuth() {
     if (typeof window === "undefined") return
 
     try {
-      // 1. Generate and store PKCE parameters
-      const codeVerifier = generateCodeVerifier()
-      const codeChallenge = await generateCodeChallenge(codeVerifier)
-      const state = generateState()
+      // Build the standard authorization URL with brand=deriv and explicit redirect_uri
+      // The redirect_uri must exactly match the registered one (including port and trailing slash)
+      const oauthUrl = `${DERIV_API.OAUTH}?app_id=${DERIV_APP_ID}&l=EN&brand=deriv&redirect_uri=${encodeURIComponent(DERIV_REDIRECT_URL)}`
 
-      sessionStorage.setItem("pkce_code_verifier", codeVerifier)
-      sessionStorage.setItem("oauth_state", state)
-
-      // 2. Build the authorization URL
-      const params = new URLSearchParams({
-        response_type: "code",
-        client_id: OAUTH_CLIENT_ID,
-        redirect_uri: DERIV_REDIRECT_URL,
-        scope: "trade",
-        state: state,
-        code_challenge: codeChallenge,
-        code_challenge_method: "S256",
-        app_id: DERIV_CONFIG.APP_ID, // Include legacy ID for routing compatibility
-      })
-
-      const paramsStr = params.toString()
-      const oauthUrl = `${DERIV_API.OAUTH}?${paramsStr}`
-
-      console.log("[v0] 🔐 Authorization Parameters:")
-      console.log("   - client_id:", OAUTH_CLIENT_ID)
-      console.log("   - redirect_uri:", DERIV_REDIRECT_URL)
-      console.log("   - state:", state)
-      console.log("   - code_challenge:", codeChallenge)
-      console.log("   - scope:", "trade")
-      
-      console.log("[v0] 🔐 Redirecting to:", oauthUrl)
+      console.log("[v0] 🔐 Redirecting to Deriv Bot Local Auth:", oauthUrl)
       window.location.href = oauthUrl
     } catch (error) {
       console.error("[v0] ❌ OAuth setup error:", error)

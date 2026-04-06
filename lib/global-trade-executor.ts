@@ -104,6 +104,7 @@ export class GlobalTradeExecutor {
         duration: request.duration,
         duration_unit: "s",
         symbol: request.market,
+        underlying_symbol: request.market, // V1 Options API compatibility
         req_id: this.manager.getNextReqId()
       })
     })

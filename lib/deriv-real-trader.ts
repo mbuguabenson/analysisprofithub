@@ -62,6 +62,7 @@ export class DerivRealTrader extends EventEmitter {
 
       const proposalRequest: any = {
         symbol: config.symbol,
+        underlying_symbol: config.symbol, // V1 Options API compatibility
         contract_type: config.contractType,
         amount: stakeAmount,
         basis: "stake",

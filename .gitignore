@@ -42,3 +42,4 @@ logs/
 .tempmediaStorage/
 .system_generated/
 .gemini/
+certificates

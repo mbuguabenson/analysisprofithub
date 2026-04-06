@@ -36,6 +36,7 @@ export class TradeExecutor {
       contract_type: config.contractType,
       currency: "USD",
       symbol: config.symbol,
+      underlying_symbol: config.symbol, // V1 Options API compatibility
       duration: config.duration,
       duration_unit: config.durationUnit,
     }

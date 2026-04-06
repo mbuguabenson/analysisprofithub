@@ -54,6 +54,7 @@ export class TradeExecutor {
         // Step 1: Get proposal
         const proposalParams: any = {
           symbol: config.symbol,
+          underlying_symbol: config.symbol, // V1 Options API compatibility
           contract_type: config.contractType,
           amount: Number(config.stake.toFixed(2)),
           basis: "stake",

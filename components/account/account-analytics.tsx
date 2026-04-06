@@ -164,18 +164,19 @@ export function AccountAnalytics({ theme = "dark" }: AccountAnalyticsProps) {
             ) : trades.length > 0 ? (
                 <>
                     {/* Summary */}
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {[
-                            { label: "Trades", value: totals.trades, color: "text-indigo-400", icon: <BarChart3 className="h-4 w-4" /> },
-                            { label: "Wins", value: totals.wins, color: "text-emerald-400", icon: <TrendingUp className="h-4 w-4" /> },
-                            { label: "Losses", value: totals.losses, color: "text-rose-400", icon: <TrendingDown className="h-4 w-4" /> },
-                            { label: "Net P&L", value: `${totals.pnl >= 0 ? "+" : ""}$${totals.pnl.toFixed(2)}`, color: totals.pnl >= 0 ? "text-emerald-400" : "text-rose-400", icon: <Target className="h-4 w-4" /> },
-                            { label: "Strategies", value: totals.strategies, color: "text-purple-400", icon: <Zap className="h-4 w-4" /> },
+                            { label: "TRADES HUD", value: totals.trades, color: "text-indigo-400", bgColor: "bg-indigo-500/5", borderColor: "border-indigo-500/20", icon: <BarChart3 className="h-4 w-4" /> },
+                            { label: "WINS UNIT", value: totals.wins, color: "text-emerald-400", bgColor: "bg-emerald-500/5", borderColor: "border-emerald-500/20", icon: <TrendingUp className="h-4 w-4" /> },
+                            { label: "LOSSES UNIT", value: totals.losses, color: "text-rose-400", bgColor: "bg-rose-500/5", borderColor: "border-rose-500/20", icon: <TrendingDown className="h-4 w-4" /> },
+                            { label: "NET REVENUE", value: `${totals.pnl >= 0 ? "+" : ""}$${totals.pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, color: totals.pnl >= 0 ? "text-emerald-400" : "text-rose-400", bgColor: totals.pnl >= 0 ? "bg-emerald-500/5" : "bg-rose-500/5", borderColor: totals.pnl >= 0 ? "border-emerald-500/20" : "border-rose-500/20", icon: <Target className="h-4 w-4" /> },
+                            { label: "STRAT NODES", value: totals.strategies, color: "text-purple-400", bgColor: "bg-purple-500/5", borderColor: "border-purple-500/20", icon: <Zap className="h-4 w-4" /> },
                         ].map((s, i) => (
-                            <div key={i} className="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4">
-                                <div className={`${s.color} mb-2`}>{s.icon}</div>
-                                <p className="text-[9px] font-bold uppercase tracking-widest text-gray-600 mb-0.5">{s.label}</p>
-                                <p className={`text-xl font-black ${s.color}`}>{s.value}</p>
+                            <div key={i} className={`relative overflow-hidden rounded-[1.5rem] border ${s.bgColor} ${s.borderColor} p-5 transition-all duration-500 hover:-translate-y-1 hover:shadow-2xl`}>
+                                <div className="absolute top-0 right-0 p-3 opacity-10 rotate-12">{s.icon}</div>
+                                <div className={`${s.color} mb-3 filter drop-shadow-[0_0_8px_currentColor] opacity-80`}>{s.icon}</div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 mb-1 leading-none">{s.label}</p>
+                                <p className={`text-2xl font-black tracking-tighter tabular-nums ${s.color}`}>{s.value}</p>
                             </div>
                         ))}
                     </div>
@@ -215,7 +216,7 @@ export function AccountAnalytics({ theme = "dark" }: AccountAnalyticsProps) {
                                         <YAxis tick={{ fill: "#4b5563", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `$${v}`} />
                                         <Tooltip
                                             contentStyle={{ background: "#111", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, fontSize: 11 }}
-                                            formatter={(v: number) => [`$${v.toFixed(2)}`, "Net P&L"]}
+                                            formatter={(v: number | undefined) => [`$${(v ?? 0).toFixed(2)}`, "Net P&L"]}
                                         />
                                         <Bar dataKey="pnl" radius={[6, 6, 0, 0]} maxBarSize={40}>
                                             {strategyData.slice(0, 8).map((entry, idx) => (

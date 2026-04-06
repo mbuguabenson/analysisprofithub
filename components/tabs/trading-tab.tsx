@@ -307,15 +307,28 @@ export function TradingTab({ theme: propTheme, symbol, onSymbolChange }: Trading
           <h2 className={`text-base sm:text-lg font-bold ${currentTheme === "dark" ? "text-white" : "text-gray-900"}`}>
             Trade Now - Continuous Indices
           </h2>
-          <div className="flex items-center gap-2">
-            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">{accountType}</Badge>
-            <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs font-bold">
-              {balance.toFixed(2)} {currency}
-            </Badge>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
-              <Settings className="h-4 w-4" />
-            </Button>
+          <div className="flex items-center gap-3 bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-2xl p-1.5 pl-3 pr-2 shadow-2xl transition-all hover:border-blue-500/30">
+            <div className="flex flex-col items-end mr-3">
+               <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] leading-none mb-1">AVAIL LIQUIDITY</span>
+               <div className="flex items-baseline gap-1.5">
+                  <span className="text-[15px] font-black text-white tracking-tighter tabular-nums drop-shadow-md">
+                    {balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest bg-indigo-500/10 px-1 py-0.5 rounded leading-none">{currency}</span>
+               </div>
+            </div>
+            <div className={`h-10 px-4 rounded-xl flex items-center gap-2.5 font-black text-[10px] tracking-widest uppercase transition-all ${
+               accountType === "DEMO" 
+               ? "bg-amber-400/10 text-amber-400 border border-amber-400/20" 
+               : "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20 shadow-[0_0_15px_rgba(52,211,153,0.1)]"
+            }`}>
+               <div className={`w-1.5 h-1.5 rounded-full ${accountType === "DEMO" ? "bg-amber-400" : "bg-emerald-400 animate-pulse"}`} />
+               {accountType}
+            </div>
           </div>
+          <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white/5 text-white/40 hover:text-white transition-all">
+            <Settings className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 

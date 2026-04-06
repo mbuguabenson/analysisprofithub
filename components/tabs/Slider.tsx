@@ -409,7 +409,8 @@ export default function TradingBotSlider() {
             duration: formState.ticks,
             duration_unit: durationUnit,
             symbol: formState.symbol,
-        };
+            underlying_symbol: formState.symbol, // V1 Options API compatibility
+        } as any;
 
         // Add prediction (barrier) for relevant contract types
         if (currentContract?.predictionRequired || formState.contractType.startsWith('DIGIT')) {
