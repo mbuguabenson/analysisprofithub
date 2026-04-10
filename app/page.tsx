@@ -46,6 +46,7 @@ import { FloatingAIScanner } from "@/components/floating-ai-scanner"
 import { ApiTokenModal } from "@/components/api-token-modal"
 import { useDerivAuth } from "@/hooks/use-deriv-auth"
 import { DashboardTab } from "@/components/tabs/dashboard-tab"
+import { Footer } from "@/components/footer"
 import {
   Dialog,
   DialogContent,
@@ -188,24 +189,24 @@ export default function DerivAnalysisApp() {
         {!siteConfig?.headerHidden && (
           <header
              className={`fixed top-0 left-0 right-0 z-[100] shrink-0 w-full transition-all duration-500 border-b ${theme === "dark"
-               ? "bg-[#0a0a0a]/95 border-white/8"
-               : "bg-white/98 border-gray-200"
-               } backdrop-blur-xl`}
+               ? "bg-black/98 border-white/5 backdrop-blur-md"
+               : "bg-white/99 border-gray-100 backdrop-blur-sm"
+               }`}
           >
             <div className="mx-auto w-full px-2 sm:px-6 lg:px-8">
               <div className="flex flex-nowrap items-center h-16 sm:h-20 gap-4 sm:gap-6 w-full justify-between overflow-hidden">
 
-                {/* Brand Logo and Text - Clean Modern */}
-                <div className="flex items-center shrink-0 min-w-[140px] sm:min-w-[200px]">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center font-black text-sm sm:text-base ${theme === "dark" ? "bg-blue-600 text-white" : "bg-blue-600 text-white"}`}>
+                {/* Brand Logo and Text - Modern Minimal */}
+                <div className="flex items-center shrink-0 min-w-[140px] sm:min-w-[180px]">
+                  <div className="flex items-center gap-2.5 sm:gap-3">
+                    <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-md flex items-center justify-center font-semibold text-sm ${theme === "dark" ? "bg-slate-900 border border-white/10 text-white" : "bg-gray-100 border border-gray-300 text-gray-900"}`}>
                       A
                     </div>
                     <div className="flex flex-col leading-tight">
-                      <h1 className={`text-base sm:text-lg font-bold tracking-tight ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
-                        analysisprofithub
+                      <h1 className={`text-sm sm:text-base font-semibold tracking-tight ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                        AnalysisProfitHub
                       </h1>
-                      <h2 className={`text-[9px] sm:text-[10px] font-medium tracking-wide opacity-60 uppercase ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+                      <h2 className={`text-[7px] sm:text-[8px] font-medium tracking-widest uppercase opacity-50 ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
                         Trading
                       </h2>
                     </div>
@@ -220,9 +221,9 @@ export default function DerivAnalysisApp() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className={`h-8 px-3 text-[10px] rounded-lg font-bold flex items-center gap-1.5 transition-all ${theme === "dark"
-                          ? "bg-slate-800/50 text-slate-300 border border-slate-700/50 hover:bg-blue-600 hover:text-white"
-                          : "bg-gray-100 text-slate-700 hover:bg-blue-500 hover:text-white"}`}
+                        className={`h-8 px-3 text-[10px] rounded-md font-medium flex items-center gap-1.5 transition-all border ${theme === "dark"
+                          ? "text-gray-300 border-white/10 hover:border-white/20 hover:bg-white/5"
+                          : "text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}
                       >
                         <User className="h-3.5 w-3.5" />
                         Account
@@ -232,9 +233,9 @@ export default function DerivAnalysisApp() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowRiskModal(true)}
-                      className={`h-8 px-3 text-[10px] rounded-lg font-bold flex items-center gap-1 transition-all ${theme === "dark"
-                        ? "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
-                        : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"}`}
+                      className={`h-8 px-3 text-[10px] rounded-md font-medium flex items-center gap-1 transition-all border ${theme === "dark"
+                        ? "text-amber-400 border-amber-500/30 hover:border-amber-500/50 hover:bg-amber-500/10"
+                        : "text-amber-700 border-amber-200 hover:border-amber-300 hover:bg-amber-50"}`}
                     >
                       <AlertTriangle className="h-3.5 w-3.5" />
                       Risk
@@ -243,9 +244,9 @@ export default function DerivAnalysisApp() {
                       variant="ghost"
                       size="icon"
                       onClick={toggleTheme}
-                      className={`h-8 w-8 rounded-lg transition-all ${theme === "dark"
-                        ? "bg-white/5 text-yellow-500 hover:bg-white/10"
-                        : "bg-black/5 text-slate-700 hover:bg-black/10"
+                      className={`h-8 w-8 rounded-md transition-all border ${theme === "dark"
+                        ? "text-gray-400 border-white/10 hover:border-white/20 hover:bg-white/5"
+                        : "text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
                         }`}
                     >
                       {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
@@ -737,21 +738,7 @@ export default function DerivAnalysisApp() {
       </Tabs>
 
       {!siteConfig?.footerHidden && (
-        <footer
-          className={`mt-4 py-3 transition-all duration-300 border-t ${theme === "dark"
-            ? "bg-[#0a0a0a] border-white/8"
-            : "bg-gray-50 border-gray-200"
-            }`}
-        >
-          <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] sm:text-xs ${theme === "dark" ? "text-gray-500" : "text-gray-500"}`}>
-              <div className="flex flex-wrap items-center gap-4">
-                <span className="font-bold text-slate-800 dark:text-gray-400">analysisprofithub © 2026</span>
-                <button onClick={() => setIsDisclaimerOpen(true)} className="hover:text-blue-500 transition-colors">Risk Disclaimer</button>
-              </div>
-            </div>
-          </div>
-        </footer>
+        <Footer theme={theme} />
       )}
 
       {/* Unified Risk Disclaimer Modal */}

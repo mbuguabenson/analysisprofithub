@@ -21,8 +21,14 @@
  * - Derivatives Base (optional): https://github.com/deriv-com/derivatives
  */
 
-export const DERIV_APP_ID = "32KGABH3pjSMkQ6JTotTG" // ✅ V1 App ID (Options API)
-export const OAUTH_CLIENT_ID = "32KGABH3pjSMkQ6JTotTG" // ✅ V1 PKCE OAuth Client ID
+// ✅ CRITICAL: Two different IDs for old vs new accounts
+// LEGACY App ID: Used for older Deriv API v3 WebSocket connections
+// MUST be numeric (e.g., "16929") - used by older accounts
+export const DERIV_APP_ID = "16929" // Legacy app_id for v3 WebSocket (older accounts)
+
+// MODERN OAuth Client ID: Alphanumeric, used for OAuth 2.0 PKCE flow
+// Used for new accounts and modern authentication
+export const OAUTH_CLIENT_ID = "32EtOUHbr4zUOcHKwjgwj" // Modern PKCE OAuth Client ID
 
 // Get redirect URL based on environment
 // This must match the PRE-REGISTERED redirect URIs in the Deriv OAuth dashboard (api.deriv.com)
