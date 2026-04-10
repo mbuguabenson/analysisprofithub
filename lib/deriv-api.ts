@@ -338,7 +338,7 @@ export class DerivAPIClient {
       throw new Error("Invalid symbol: Symbol cannot be empty")
     }
 
-    // Send both `symbol` (V3) and `underlying_symbol` (V1 Options API) for cross-version compatibility
+    // ✅ DERIV API V1: Send both `symbol` (V3) and `underlying_symbol` (V1 Options API) for cross-version compatibility
     const proposalReq: any = {
       proposal: 1,
       ...validatedParams,
@@ -347,13 +347,15 @@ export class DerivAPIClient {
       basis: validatedParams.basis || "stake",
     }
 
+    console.log(`[v0] 💡 V1 Proposal: ${params.contract_type} on ${params.symbol} (${params.amount} @ ${params.basis})`)
     const response = await this.send(proposalReq)
 
     if (response.error) {
-      console.error("[v0] Proposal error:", response.error)
+      console.error("[v0] ❌ V1 Proposal error:", response.error)
       throw new Error(response.error.message || "Proposal failed")
     }
 
+    console.log(`[v0] ✅ V1 Proposal: ID=${response.proposal.id}, Price=${response.proposal.ask_price}`)
     return response.proposal
   }
 
@@ -376,40 +378,46 @@ export class DerivAPIClient {
   }
 
   async buyContract(proposalId: string, askPrice?: number): Promise<BuyResponse> {
-    console.log("[v0] 🛒 buying contract:", proposalId, "at price:", askPrice)
+    // ✅ DERIV API V1: Buy contract
+    // Migration: loginid is removed (we already don't send it here)
+    console.log("[v0] 🛒 V1 Buy Contract: proposal=${proposalId}, price=${askPrice}")
+    
     const buyRequest: any = { buy: proposalId }
     if (askPrice !== undefined && isFinite(askPrice)) {
       buyRequest.price = askPrice
     }
 
-    // For Options API, we might need a request ID or specific fields
-    // Migration: loginid is removed (we already don't send it here)
-
     try {
       const response = await this.send(buyRequest)
       if (response.error) {
+        console.error("[v0] ❌ V1 Buy Error:", response.error.message)
         throw new Error(response.error.message || "Buy request failed")
       }
+      console.log(`[v0] ✅ V1 Buy Success: contract_id=${response.buy.contract_id}, cost=${response.buy.buy_price}`)
       return response.buy
     } catch (err) {
-      console.error("[v0] ❌ Buy execution failed:", err)
+      console.error("[v0] ❌ V1 Buy execution failed:", err)
       throw err
     }
   }
 
   async sellContract(contractId: number, price: number): Promise<any> {
-    console.log("[v0] 💰 selling contract:", contractId, "at price:", price)
+    // ✅ DERIV API V1: Sell contract
+    console.log(`[v0] 💰 V1 Sell Contract: contract_id=${contractId}, price=${price}`)
+    
     try {
       const response = await this.send({
         sell: contractId,
         price: price
       })
       if (response.error) {
+        console.error("[v0] ❌ V1 Sell Error:", response.error.message)
         throw new Error(response.error.message || "Sell request failed")
       }
+      console.log(`[v0] ✅ V1 Sell Success: contract_id=${contractId}, proceeds=${response.sell.sold_for}`)
       return response.sell
     } catch (err) {
-      console.error("[v0] ❌ Sell execution failed:", err)
+      console.error("[v0] ❌ V1 Sell execution failed:", err)
       throw err
     }
   }
@@ -509,12 +517,17 @@ export class DerivAPIClient {
   }
 
   async getPortfolio(): Promise<PortfolioResponse> {
+    // ✅ DERIV API V1: Get active portfolio (contracts)
+    // Migration: symbol -> underlying_symbol (V1 uses underlying_symbol)
+    console.log("[v0] 📈 V1 getPortfolio: Fetching active contracts")
+    
     const response = await this.send({ portfolio: 1 })
     if (response.error) {
+      console.error("[v0] ❌ V1 Portfolio Error:", response.error.message)
       throw new Error(response.error.message || "Portfolio fetch failed")
     }
 
-    // Migration: symbol -> underlying_symbol
+    // Normalize symbol field for V1 compatibility
     if (this.config.isOptions && response.portfolio?.contracts) {
       response.portfolio.contracts = response.portfolio.contracts.map((c: any) => ({
         ...c,
@@ -522,6 +535,7 @@ export class DerivAPIClient {
       }))
     }
 
+    console.log(`[v0] ✅ V1 Portfolio: ${response.portfolio.contracts?.length || 0} active contracts`)
     return response.portfolio
   }
 

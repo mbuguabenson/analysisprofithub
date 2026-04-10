@@ -52,7 +52,10 @@ export class DerivRESTClient {
     }
 
     /**
-     * Fetch a one-time-use WebSocket URL (OTP URL) for WebSocket authentication.
+     * ✅ DERIV API V1: Fetch OTP URL for WebSocket authentication
+     * 
+     * Endpoint: POST /trading/v1/options/accounts/{id}/otp
+     * 
      * The returned URL already contains the OTP token as a query parameter;
      * pass it directly to `new WebSocket(url)` — do NOT append anything to it.
      *
@@ -61,47 +64,98 @@ export class DerivRESTClient {
      */
     async getOTP(accountId: string): Promise<string> {
         try {
+            console.log(`[v0] 🔐 Deriv V1 OTP Request: Account ${accountId}`)
             const data = await this.request(`/trading/v1/options/accounts/${accountId}/otp`, {
                 method: "POST"
             })
+            
             // Response shape: { data: { url: "wss://…?otp=…" } }
             const url = data?.data?.url as string | undefined
-            if (!url) throw new Error(`OTP response missing data.url (got: ${JSON.stringify(data)})`)
+            if (!url) {
+                throw new Error(`OTP response missing data.url (got: ${JSON.stringify(data)})`)
+            }
+            
+            // Validate URL format
+            if (!url.startsWith("wss://") && !url.startsWith("ws://")) {
+                throw new Error(`Invalid OTP URL format: ${url}`)
+            }
+            
+            console.log(`[v0] ✅ V1 OTP URL Generated: ${url.split("?")[0]}?otp=***`)
             return url
         } catch (error) {
-            console.error("[v0] Failed to fetch OTP URL:", error)
+            console.error("[v0] ❌ Deriv V1 OTP Request Failed:", error)
             throw error
         }
     }
 
     /**
-     * Get all registered Options accounts for the authenticated user.
+     * ✅ DERIV API V1: Get all Options accounts for the authenticated user
+     * 
+     * Endpoint: GET /trading/v1/options/accounts
      * Returns the raw `data` array from the REST response.
      */
     async getAccounts(): Promise<any[]> {
-        const res = await this.request("/trading/v1/options/accounts", {
-            method: "GET"
-        })
-        return res?.data ?? res ?? []
+        try {
+            console.log(`[v0] 📊 Deriv V1 getAccounts: Fetching options accounts`)
+            const res = await this.request("/trading/v1/options/accounts", {
+                method: "GET"
+            })
+            
+            const accounts = res?.data ?? res ?? []
+            console.log(`[v0] ✅ V1 Accounts: Found ${accounts.length} account(s)`)
+            if (accounts.length > 0) {
+                accounts.forEach((acc: any, idx: number) => {
+                    console.log(`[v0]   [${idx + 1}] ${acc.account_id} (${acc.account_type})`)
+                })
+            }
+            
+            return accounts
+        } catch (error) {
+            console.error("[v0] ❌ Deriv V1 getAccounts Failed:", error)
+            throw error
+        }
     }
 
     /**
-     * Select the best account (prefers demo) and return its account_id.
+     * ✅ DERIV API V1: Select the best account (prefers demo)
+     * Returns its account_id and account_type.
      * Mirrors the reference DerivClient.selectAccount() behaviour.
      */
     async selectAccount(): Promise<{ account_id: string; account_type: 'demo' | 'real' }> {
-        const accounts = await this.getAccounts() as Array<{ account_id: string; account_type: 'demo' | 'real' }>
-        if (!accounts || accounts.length === 0) throw new Error('No Options accounts found')
-        return accounts.find(a => a.account_type === 'demo') || accounts[0]
+        try {
+            const accounts = await this.getAccounts() as Array<{ account_id: string; account_type: 'demo' | 'real' }>
+            if (!accounts || accounts.length === 0) {
+                throw new Error('No Options accounts found')
+            }
+            
+            // Prefer demo accounts for testing
+            const selected = accounts.find(a => a.account_type === 'demo') || accounts[0]
+            console.log(`[v0] ✅ V1 selectAccount: Selected ${selected.account_id} (${selected.account_type})`)
+            return selected
+        } catch (error) {
+            console.error("[v0] ❌ V1 selectAccount Failed:", error)
+            throw error
+        }
     }
 
     /**
-     * Reset demo account balance
+     * ✅ DERIV API V1: Reset demo account balance
+     * 
+     * Endpoint: POST /trading/v1/options/accounts/{id}/reset-demo-balance
+     * Only works for demo accounts.
      */
     async resetDemoBalance(accountId: string): Promise<any> {
-        return this.request(`/trading/v1/options/accounts/${accountId}/reset-demo-balance`, {
-            method: "POST"
-        })
+        try {
+            console.log(`[v0] 🔄 Deriv V1 resetDemoBalance: Account ${accountId}`)
+            const result = await this.request(`/trading/v1/options/accounts/${accountId}/reset-demo-balance`, {
+                method: "POST"
+            })
+            console.log(`[v0] ✅ V1 Demo Balance Reset: ${accountId}`)
+            return result
+        } catch (error) {
+            console.error("[v0] ❌ V1 resetDemoBalance Failed:", error)
+            throw error
+        }
     }
 }
 

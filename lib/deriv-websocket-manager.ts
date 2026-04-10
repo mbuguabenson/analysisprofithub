@@ -1105,18 +1105,38 @@ export class DerivWebSocketManager {
   }
 
   public async connectOptions(type: "demo" | "real" | "public", otpOrUrl?: string): Promise<void> {
+    // ✅ DERIV API V1: OTP URL Handling
     // If the value passed is already a full OTP URL (from getOTP()), use it directly.
     // Otherwise build a URL from the OPTIONS_WS base and append the token.
+    
+    // Log the connection attempt for debugging
+    console.log(`[v0] 🔐 Deriv V1 connectOptions: type=${type}, hasOTP=${!!otpOrUrl}`)
+    
     if (otpOrUrl && (otpOrUrl.startsWith("wss://") || otpOrUrl.startsWith("ws://"))) {
+      // Full OTP URL from REST API - use directly
+      console.log(`[v0] ✅ V1 OTP URL detected: connecting directly`)
+      this.currentEndpoint = type
+      this.log("info", `Deriv V1: Connecting to ${type} with OTP URL`)
       return this.connect(otpOrUrl, true)
     }
-
+    
     const typeKey = type.toUpperCase() as keyof typeof DERIV_API.OPTIONS_WS
     const baseUrl: string = DERIV_API.OPTIONS_WS[typeKey]
     
     // Construct URL based on whether baseUrl already has a query string
     const separator = baseUrl.includes("?") ? "&" : "?"
     const url = otpOrUrl ? `${baseUrl}${separator}otp=${otpOrUrl}` : baseUrl
+    
+    // Logging for V1 connection
+    if (otpOrUrl) {
+      console.log(`[v0] ✅ V1 OTP: Building authenticated ${type} URL`)
+      this.log("info", `Deriv V1: Built ${type} endpoint with OTP token`)
+    } else {
+      console.log(`[v0] ℹ️ V1 Public: Using public endpoint (no auth)`)
+      this.log("info", `Deriv V1: Connected to public endpoint`)
+    }
+    
+    this.currentEndpoint = type
     return this.connect(url as string, true)
   }
 }
