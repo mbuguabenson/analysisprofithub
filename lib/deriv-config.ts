@@ -10,7 +10,7 @@
  * API Standard: Deriv API v1 (REST + WebSocket)
  * - REST Base: https://api.derivws.com
  * - WebSocket Base: wss://api.derivws.com/trading/v1/options/ws/*
- * - OAuth: https://oauth.deriv.com/oauth2/authorize
+ * - OAuth: https://auth.deriv.com/oauth2/auth (NOT oauth.deriv.com!)
  * 
  * Official Deriv GitHub Repositories:
  * - Main Deriv App (DTrader, Cashier, Account, Bot Web UI): https://github.com/deriv-com/deriv-app
@@ -69,27 +69,30 @@ export const DERIV_API = {
   // All endpoints verified for v1 compliance
   
   // Primary WebSocket - public endpoint (no auth needed)
-  WEBSOCKET: `wss://api.derivws.com/trading/v1/options/ws/public?app_id=${DERIV_APP_ID}`,
+  // NOTE: Do NOT add app_id here - OTP endpoint adds it
+  WEBSOCKET: `wss://api.derivws.com/trading/v1/options/ws/public`,
   
   // Legacy V3 endpoint (DEPRECATED - kept for reference only)
   // DO NOT USE: Will be removed in future versions
   WEBSOCKET_V3: `wss://ws.derivws.com/websockets/v3?app_id=${DERIV_APP_ID}`,
   
-  // OAuth 2.0 Authorization endpoint (PKCE flow)
-  OAUTH: "https://oauth.deriv.com/oauth2/authorize",
+  // ✅ DERIV API V1: OAuth 2.0 Authorization endpoint (PKCE flow)
+  // Official endpoint: https://auth.deriv.com/oauth2/auth
+  OAUTH: "https://auth.deriv.com/oauth2/auth",
   
-  // REST API Base URL (v1)
+  // REST API Base URL (v1) - app_id goes as query parameter in requests
   REST_BASE: "https://api.derivws.com",
   
-  // WebSocket Endpoints for Options Trading (v1)
-  // These require OTP authentication for demo/real accounts
+  // ✅ DERIV API V1: WebSocket Endpoints for Options Trading
+  // Authentication: OTP URL from REST API endpoint already contains all auth params
+  // Do NOT add app_id here - the OTP URL includes it already
   OPTIONS_WS: {
-    // Demo account trading endpoint (OTP required)
-    DEMO: `wss://api.derivws.com/trading/v1/options/ws/demo?app_id=${DERIV_APP_ID}`,
-    // Real account trading endpoint (OTP required)
-    REAL: `wss://api.derivws.com/trading/v1/options/ws/real?app_id=${DERIV_APP_ID}`,
-    // Public data endpoint (no auth needed)
-    PUBLIC: `wss://api.derivws.com/trading/v1/options/ws/public?app_id=${DERIV_APP_ID}`,
+    // Demo account trading endpoint (authenticated via OTP from REST API)
+    DEMO: `wss://api.derivws.com/trading/v1/options/ws/demo`,
+    // Real account trading endpoint (authenticated via OTP from REST API)
+    REAL: `wss://api.derivws.com/trading/v1/options/ws/real`,
+    // Public data endpoint (no authentication needed)
+    PUBLIC: `wss://api.derivws.com/trading/v1/options/ws/public`,
   }
 } as const
 

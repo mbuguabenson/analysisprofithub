@@ -305,22 +305,29 @@ export function useDerivAuth() {
       sessionStorage.setItem('oauth_state', state);
 
       // Build the standard authorization URL with all required PKCE parameters
-      // ✅ DERIV API V1: Use the official oauth.deriv.com endpoint
-      const params = new URLSearchParams({
+      // ✅ DERIV API V1: Official OAuth 2.0 endpoint with PKCE
+      const params: Record<string, string> = {
         response_type: 'code',
-        client_id: OAUTH_CLIENT_ID, // ✅ V1 OAuth Client ID
+        client_id: OAUTH_CLIENT_ID, // OAuth 2.0 App ID
         redirect_uri: DERIV_REDIRECT_URL,
         scope: 'trade account_manage',
         state: state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256',
-        // ✅ IMPORTANT: app_id parameter is REQUIRED for V1 OAuth (NOT optional)
-        // This ensures the token works with the Options API WebSocket
-        app_id: DERIV_APP_ID
-      })
+      }
 
-      // ✅ DERIV API V1: Official OAuth endpoint
-      const oauthUrl = `https://oauth.deriv.com/oauth2/authorize?${params.toString()}`
+      // ✅ IMPORTANT: app_id is OPTIONAL and only needed if:
+      // - You're also maintaining a legacy Deriv API v1 app
+      // - Deriv needs to route users to the old platform if they're legacy-only
+      // For new OAuth 2.0 apps, app_id should NOT be included
+      // Uncomment below ONLY if you have a legacy app that needs support:
+      // if (DERIV_APP_ID) {
+      //   params.app_id = DERIV_APP_ID
+      // }
+
+      const urlParams = new URLSearchParams(params)
+      // ✅ DERIV API: Official OAuth 2.0 endpoint (NOT oauth.deriv.com)
+      const oauthUrl = `https://auth.deriv.com/oauth2/auth?${urlParams.toString()}`
 
       console.log("[v0] 🔐 Redirecting to Deriv OAuth URL:", oauthUrl)
       window.location.href = oauthUrl
