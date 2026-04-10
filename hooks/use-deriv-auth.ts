@@ -98,6 +98,9 @@ export function useDerivAuth() {
             })
           }
 
+          // ✅ DERIV API V1: Handle account list
+          // For V1 API, the authorize response may not include account_list
+          // If missing, create a minimal account entry with current balance
           if (authorize.account_list && Array.isArray(authorize.account_list)) {
             const lastBalancesMap = getStored("deriv_last_balances", {})
             const formatted = authorize.account_list.map((acc: any) => {
@@ -124,6 +127,20 @@ export function useDerivAuth() {
             localStorage.setItem("deriv_last_balances", JSON.stringify(balanceMap))
             
             setAccounts(formatted)
+          } else if (authorize.balance !== undefined) {
+            // ✅ V1 FALLBACK: If account_list is missing, create single account entry from authorize response
+            console.log("[v0] ℹ️ V1 Account: No account_list in authorize, using current account data")
+            const singleAccount: Account = {
+              id: authorize.loginid,
+              type: authorize.is_virtual ? "Demo" : "Real",
+              currency: authorize.currency || "USD",
+              balance: Number(authorize.balance),
+            }
+            setAccounts([singleAccount])
+            
+            // Cache this balance
+            const balanceMap = { [authorize.loginid]: { balance: Number(authorize.balance), currency: authorize.currency || "USD" } }
+            localStorage.setItem("deriv_last_balances", JSON.stringify(balanceMap))
           }
 
           if (!balanceSubscribedRef.current) {
@@ -288,18 +305,22 @@ export function useDerivAuth() {
       sessionStorage.setItem('oauth_state', state);
 
       // Build the standard authorization URL with all required PKCE parameters
+      // ✅ DERIV API V1: Use the official oauth.deriv.com endpoint
       const params = new URLSearchParams({
         response_type: 'code',
-        client_id: OAUTH_CLIENT_ID, // Modern OAuth ID
+        client_id: OAUTH_CLIENT_ID, // ✅ V1 OAuth Client ID
         redirect_uri: DERIV_REDIRECT_URL,
         scope: 'trade account_manage',
         state: state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256',
-        app_id: DERIV_APP_ID // Legacy App ID (ensures compatibility with WS tokens)
+        // ✅ IMPORTANT: app_id parameter is REQUIRED for V1 OAuth (NOT optional)
+        // This ensures the token works with the Options API WebSocket
+        app_id: DERIV_APP_ID
       })
 
-      const oauthUrl = `https://auth.deriv.com/oauth2/auth?${params.toString()}`
+      // ✅ DERIV API V1: Official OAuth endpoint
+      const oauthUrl = `https://oauth.deriv.com/oauth2/authorize?${params.toString()}`
 
       console.log("[v0] 🔐 Redirecting to Deriv OAuth URL:", oauthUrl)
       window.location.href = oauthUrl

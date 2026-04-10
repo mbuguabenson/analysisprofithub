@@ -24,9 +24,14 @@ export class DerivRESTClient {
     }
 
     private async request(path: string, options: RequestInit = {}): Promise<any> {
-        const url = `${DERIV_API.REST_BASE}${path}`
+        // ✅ DERIV API V1: Build URL with app_id parameter
+        // V1 requires app_id as a query parameter (not just header)
+        const separator = path.includes("?") ? "&" : "?"
+        const url = `${DERIV_API.REST_BASE}${path}${separator}app_id=${this.appId}`
+        
         const headers = new Headers(options.headers || {})
 
+        // Also set header for backward compatibility
         headers.set("Deriv-App-ID", this.appId)
         
         const hasBody = options.body !== undefined
@@ -38,6 +43,12 @@ export class DerivRESTClient {
             headers.set("Authorization", `Bearer ${this.token}`)
         }
 
+        console.log("[v0] 🌐 REST Request:", {
+            url: url.split("?")[0] + "?app_id=***",
+            hasAuth: !!this.token,
+            method: options.method || "GET"
+        })
+
         const response = await fetch(url, {
             ...options,
             headers
@@ -45,6 +56,7 @@ export class DerivRESTClient {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}))
+            console.error("[v0] ❌ REST Error:", errorData)
             throw new Error(errorData.message || `REST Request failed with status ${response.status}`)
         }
 
