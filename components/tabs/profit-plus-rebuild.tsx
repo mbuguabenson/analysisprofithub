@@ -248,13 +248,6 @@ export function ProfitPlusRebuild() {
               {currentProfit >= 0 ? '+' : ''}{currentProfit.toFixed(2)}
             </p>
           </div>
-          <Button
-            onClick={() => window.open('https://deriv-dtrader.vercel.app', '_blank')}
-            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white flex items-center gap-2"
-          >
-            <ExternalLink size={18} />
-            Open DTrader
-          </Button>
         </div>
       </div>
 

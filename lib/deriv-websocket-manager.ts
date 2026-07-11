@@ -249,6 +249,9 @@ export class DerivWebSocketManager {
           this.setConnectionState("CONNECTED")
           this.startHeartbeat()
           this.processMessageQueue()
+          void this.restoreTickSubscriptions().catch((err) => {
+            console.warn("[v0] Failed to restore tick subscriptions after reconnect:", err)
+          })
           this.connectionPromise = null
           settle(() => resolve())
         })
@@ -300,6 +303,7 @@ export class DerivWebSocketManager {
           } else {
             console.log(`[v0] WebSocket closed unexpectedly (${reason}), reconnecting…`)
             this.log("warning", `WebSocket closed (${reason}), reconnecting…`)
+            this.prepareSubscriptionsForReconnect()
             this.handleReconnect()
           }
         })
@@ -774,7 +778,131 @@ export class DerivWebSocketManager {
     }
   }
 
-  // ─── Send ──────────────────────────────────────────────────────────────────
+  private prepareSubscriptionsForReconnect() {
+    this.log("info", "Preparing subscription state for reconnect")
+    this.subscriptions.clear()
+    this.symbolToSubscriptionMap.clear()
+    this.subscriptionRefCount.clear()
+    this.activeSubscriptions.clear()
+    this.messageQueue = []
+  }
+
+  private async restoreTickSubscriptions(): Promise<void> {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return
+    const symbols = Array.from(this.tickCallbacks.keys())
+    if (symbols.length === 0) return
+
+    this.log("info", `Restoring ${symbols.length} tick subscription(s) after reconnect`)
+    for (const symbol of symbols) {
+      try {
+        if (!this.symbolToSubscriptionMap.has(symbol)) {
+          await this.subscribeTicksInternal(symbol)
+        }
+      } catch (err) {
+        console.warn(`[v0] Failed to restore subscription for ${symbol}:`, err)
+      }
+    }
+  }
+
+  private async subscribeTicksInternal(symbol: string): Promise<string> {
+    if (!symbol || typeof symbol !== 'string' || symbol.trim() === "") {
+      console.warn("[v0] subscribeTicksInternal: Invalid symbol provided:", symbol)
+      return ""
+    }
+
+    const cleanSymbol = symbol.trim()
+    const existingId = this.symbolToSubscriptionMap.get(cleanSymbol)
+    if (existingId) {
+      const ref = this.subscriptionRefCount.get(existingId) || 0
+      this.subscriptionRefCount.set(existingId, ref + 1)
+      return existingId
+    }
+
+    if (this.activeSubscriptions.has(cleanSymbol)) {
+      return new Promise((resolve) => {
+        const check = setInterval(() => {
+          const id = this.symbolToSubscriptionMap.get(cleanSymbol)
+          if (id) {
+            clearInterval(check)
+            const ref = this.subscriptionRefCount.get(id) || 0
+            this.subscriptionRefCount.set(id, ref + 1)
+            resolve(id)
+          }
+        }, 200)
+        setTimeout(() => { clearInterval(check); resolve("") }, 15000)
+      })
+    }
+
+    this.activeSubscriptions.add(cleanSymbol)
+
+    let lastError: any = null
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`[v0] Subscribing to ${cleanSymbol} (attempt ${attempt})`)
+        const response = await this.sendAndWait({ ticks: cleanSymbol, subscribe: 1 }, 30000)
+
+        if (response.subscription?.id) {
+          const subscriptionId = response.subscription.id
+          const existing = this.symbolToSubscriptionMap.get(cleanSymbol)
+          if (existing && existing !== subscriptionId) {
+            this.send({ forget: subscriptionId, req_id: this.getNextReqId() })
+            const ref = this.subscriptionRefCount.get(existing) || 0
+            this.subscriptionRefCount.set(existing, ref + 1)
+            this.activeSubscriptions.delete(cleanSymbol)
+            return existing
+          }
+          this.subscriptions.set(subscriptionId, cleanSymbol)
+          this.symbolToSubscriptionMap.set(cleanSymbol, subscriptionId)
+          this.subscriptionRefCount.set(subscriptionId, 1)
+          this.activeSubscriptions.delete(cleanSymbol)
+          return subscriptionId
+        }
+        throw new Error(response.error?.message || "Invalid subscription response")
+      } catch (error: any) {
+        lastError = error
+        if (error.code === 'AlreadySubscribed') {
+          await new Promise(r => setTimeout(r, 1000))
+          const recoveredId = this.symbolToSubscriptionMap.get(cleanSymbol)
+          if (recoveredId) {
+            const ref = this.subscriptionRefCount.get(recoveredId) || 0
+            this.subscriptionRefCount.set(recoveredId, ref + 1)
+            this.activeSubscriptions.delete(cleanSymbol)
+            return recoveredId
+          }
+        }
+        if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt))
+      }
+    }
+
+    this.activeSubscriptions.delete(cleanSymbol)
+    const errMsg = lastError?.error?.message
+      || lastError?.message
+      || (typeof lastError === 'object' && Object.keys(lastError).length === 0
+          ? 'SymbolNotFound or market not available on this connection'
+          : JSON.stringify(lastError))
+    const errCode = lastError?.error?.code || lastError?.code || 'unknown'
+    if (['SymbolNotFound', 'MarketIsClosed', 'InvalidSymbol', 'unknown'].includes(errCode)) {
+      console.warn(`[v0] subscribeTicksInternal: ${cleanSymbol} not available (${errCode}): ${errMsg}`)
+    } else {
+      console.error(`[v0] Failed to subscribe to ${cleanSymbol}: [${errCode}] ${errMsg}`)
+    }
+
+    return ""
+  }
+
+  public async subscribeTicks(symbol: string, callback: (tick: TickData) => void): Promise<string> {
+    if (!symbol || typeof symbol !== 'string' || symbol.trim() === "") {
+      console.warn("[v0] subscribeTicks: Invalid symbol provided:", symbol)
+      return ""
+    }
+    const cleanSymbol = symbol.trim()
+    if (!this.tickCallbacks.has(cleanSymbol)) this.tickCallbacks.set(cleanSymbol, new Set())
+    this.tickCallbacks.get(cleanSymbol)!.add(callback)
+
+    return this.subscribeTicksInternal(cleanSymbol)
+  }
+
+  public async unsubscribe(subscriptionId: string, callback?: (tick: TickData) => void) {
 
   public send(message: any): void {
     if (this.api && this.ws?.readyState === WebSocket.OPEN) {

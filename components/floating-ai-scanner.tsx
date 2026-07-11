@@ -14,6 +14,7 @@ interface FloatingAIScannerProps {
   theme?: "light" | "dark"
   availableSymbols?: any[]
   onScanComplete?: (results: ScanResult[]) => void
+  onClose?: () => void
 }
 
 interface ScanResult {
@@ -127,6 +128,7 @@ export function FloatingAIScanner({
   theme = "dark",
   availableSymbols = [],
   onScanComplete,
+  onClose,
 }: FloatingAIScannerProps) {
   const [isOpen,        setIsOpen]        = useState(false)
   const [isMinimized,   setIsMinimized]   = useState(false)

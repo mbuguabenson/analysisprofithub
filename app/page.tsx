@@ -36,7 +36,6 @@ import { AutomatedTab } from "@/components/tabs/automated-tab"
 import { SmartAuto24Tab } from "@/components/tabs/smartauto24-tab"
 import { ProfitPlusTabV2 } from "@/components/tabs/profit-plus-tab-v2"
 import { ProfitPlusRebuild } from "@/components/tabs/profit-plus-rebuild"
-import { DTraderTab } from "@/components/tabs/dtrader-tab"
 import { AdvancedSignalsTab } from "@/components/advanced-signals-tab"
 import { useGlobalTradingContext } from "@/hooks/use-global-trading-context"
 import { verifier } from "@/lib/system-verifier"
@@ -45,7 +44,6 @@ import { MoneyMakerTab } from "@/components/tabs/money-maker-tab"
 import type { Variants } from 'framer-motion';
 import { ToolsInfoTab } from "@/components/tabs/tools-info-tab"
 import SmartAdaptiveTradingTab from "@/components/tabs/smart-adaptive-trading"
-import { DashboardTab } from "@/components/tabs";
 import { RiskDisclaimerModal } from "@/components/modals/risk-disclaimer-modal"
 import { MarketSelector } from "@/components/market-selector"
 
@@ -53,6 +51,7 @@ import { FloatingAIScanner } from "@/components/floating-ai-scanner"
 import { LiveChat } from "@/components/live-chat"
 import { ApiTokenModal } from "@/components/api-token-modal"
 import { useDerivAuth } from "@/hooks/use-deriv-auth"
+import { SignalsHubTab } from "@/components/tabs/signals-hub-tab"
 
 import {
   Dialog,
@@ -77,6 +76,7 @@ export default function DerivAnalysisApp() {
   const [initError, setInitError] = useState<string | null>(null)
   const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false)
   const [showRiskModal, setShowRiskModal] = useState(false)
+  const [showAIScanner, setShowAIScanner] = useState(false)
 
   const [siteConfig, setSiteConfig] = useState<any>(null)
   const [watchedDigits, setWatchedDigits] = useState<number[]>(() => {
@@ -272,15 +272,6 @@ export default function DerivAnalysisApp() {
                       <AlertTriangle className="h-3.5 w-3.5" />
                       Risk
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setActiveTab('dtrader')}
-                      className={`h-8 px-3 text-[10px] rounded-lg font-bold flex items-center gap-1.5 transition-all bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white border-0`}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      DTrader
-                    </Button>
                     <LiveChat />
                     <Button
                       variant="ghost"
@@ -323,21 +314,27 @@ export default function DerivAnalysisApp() {
                       >
                         <div className="p-6 border-b border-white/5 flex items-center justify-between">
                           <SheetTitle className={theme === "dark" ? "text-white text-xl font-black uppercase tracking-tight" : "text-slate-900 text-xl font-black uppercase tracking-tight"}>
-                            Dashboard Hub
+                            Mobile Menu
                           </SheetTitle>
                         </div>
                         
                         {/* Mobile quick actions at the top of the sidebar */}
-                        <div className="sm:hidden flex items-center justify-around gap-2 p-4 border-b border-white/5 bg-slate-950/25">
-                          <Link href="/account" className="flex-1">
+                        <div className="sm:hidden grid grid-cols-2 gap-2 p-4 border-b border-white/5 bg-slate-950/25">
+                          <Link href="/account" className="col-span-2">
                             <Button variant="outline" size="sm" className="w-full text-[10px] font-bold h-8">
                               <User className="h-3 w-3 mr-1" /> Account
                             </Button>
                           </Link>
-                          <Button variant="outline" size="sm" onClick={() => setShowRiskModal(true)} className="flex-1 text-[10px] font-bold h-8">
+                          <Button variant="outline" size="sm" onClick={() => setShowRiskModal(true)} className="w-full text-[10px] font-bold h-8">
                             <AlertTriangle className="h-3 w-3 mr-1" /> Risk
                           </Button>
-                          <Button variant="outline" size="sm" onClick={toggleTheme} className="flex-1 text-[10px] font-bold h-8">
+                          <Button variant="outline" size="sm" onClick={() => setShowAIScanner(true)} className="w-full text-[10px] font-bold h-8">
+                            <Cpu className="h-3 w-3 mr-1" /> AI Scanner
+                          </Button>
+                          <div className="w-full">
+                            <LiveChat />
+                          </div>
+                          <Button variant="outline" size="sm" onClick={toggleTheme} className="w-full text-[10px] font-bold h-8">
                             {theme === "dark" ? <Sun className="h-3 w-3 mr-1" /> : <Moon className="h-3.5 w-3.5 mr-1" />} Theme
                           </Button>
                         </div>
@@ -359,19 +356,14 @@ export default function DerivAnalysisApp() {
                     <div className="overflow-x-auto no-scrollbar flex">
                       <ResponsiveTabs theme={theme} value={activeTab} onValueChange={setActiveTab}>
                         {[
-                          "dashboard",
                           "smart-adaptive",
                           "smart-analysis",
                           "smartauto24",
                           "profit-plus",
-                          "dtrader",
                           "money-maker",
                           "autobot",
                           "automated",
-                          "signals",
-                          "pro-signals",
-                          "super-signals",
-                          "advanced-signals",
+                          "signals-hub",
                           "even-odd",
                           "over-under",
                           "advanced-over-under",
@@ -381,19 +373,14 @@ export default function DerivAnalysisApp() {
                           "tools-info",
                         ].filter(tab => !siteConfig?.hiddenTabs?.includes(tab)).map((tab) => {
                           const tabLabels: Record<string, string> = {
-                            "dashboard": "Dashboard",
                             "smart-adaptive": "Smart Adaptive",
                             "smart-analysis": "Smart Analysis",
                             "smartauto24": "SmartAuto24",
                             "profit-plus": "ProfitPlus",
-                            "dtrader": "DTrader",
                             "money-maker": "Money Maker",
                             "autobot": "Auto Bot",
                             "automated": "Automated",
-                            "signals": "Signals",
-                            "pro-signals": "Pro Signals",
-                            "super-signals": "Super Signals",
-                            "advanced-signals": "Advanced Signals",
+                            "signals-hub": "Signals Hub",
                             "even-odd": "Even/Odd",
                             "over-under": "Over/Under",
                             "advanced-over-under": "Advanced Over/Under",
@@ -403,19 +390,14 @@ export default function DerivAnalysisApp() {
                             "tools-info": "Tools Info"
                           }
                           const tabIcons: Record<string, any> = {
-                            "dashboard": LayoutDashboard,
                             "smart-adaptive": Sliders,
                             "smart-analysis": LineChart,
                             "smartauto24": Sparkles,
                             "profit-plus": TrendingUp,
-                            "dtrader": Activity,
                             "money-maker": TrendingUp,
                             "autobot": Cpu,
                             "automated": Terminal,
-                            "signals": Radio,
-                            "pro-signals": TrendingUp,
-                            "super-signals": Flame,
-                            "advanced-signals": Activity,
+                            "signals-hub": Flame,
                             "even-odd": Hash,
                             "over-under": ArrowUpDown,
                             "advanced-over-under": Percent,
@@ -587,10 +569,6 @@ export default function DerivAnalysisApp() {
                   Reconnecting to Deriv API... Some data may be delayed.
                 </div>
               )}
-              <TabsContent value="dashboard" className="mt-0">
-                <DashboardTab theme={theme} />
-              </TabsContent>
-
               <TabsContent value="smart-analysis" className="mt-0 space-y-2 sm:space-y-3 md:space-y-4">
                 <div
                   className={`rounded-lg sm:rounded-xl p-2 sm:p-3 border flex items-center justify-between ${theme === "dark" ? "bg-linear-to-br from-[#0f1629]/80 to-[#1a2235]/80 border-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.2)]" : "bg-white border-gray-200 shadow-lg"}`}
@@ -709,30 +687,22 @@ export default function DerivAnalysisApp() {
                 )}
               </TabsContent>
 
-              <TabsContent value="signals" className="mt-0">
-                {analysis && <SignalsTab signals={signals} proSignals={proSignals} analysis={analysis} theme={theme} symbol={symbol} currentPrice={currentPrice} currentDigit={currentDigit} tickCount={tickCount} maxTicks={maxTicks} onMaxTicksChange={changeMaxTicks} />}
-              </TabsContent>
-
-              <TabsContent value="pro-signals" className="mt-0">
-                {analysis && <ProSignalsTab proSignals={proSignals} analysis={analysis} theme={theme} symbol={symbol} currentPrice={currentPrice} currentDigit={currentDigit} tickCount={tickCount} maxTicks={maxTicks} onMaxTicksChange={changeMaxTicks} />}
-              </TabsContent>
-
-              <TabsContent value="super-signals" className="mt-0">
-                {analysis && (
-                  <HeritageSuperSignals 
-                    theme={theme} 
-                    symbol={symbol} 
-                    availableSymbols={availableSymbols} 
-                    maxTicks={maxTicks}
-                    analysis={analysis}
-                    recentDigits={recentDigits}
-                    tickCount={tickCount}
-                  />
-                )}
-              </TabsContent>
-
-              <TabsContent value="advanced-signals" className="mt-0">
-                <AdvancedSignalsTab theme={theme} availableSymbols={availableSymbols} />
+              <TabsContent value="signals-hub" className="mt-0">
+                <SignalsHubTab
+                  signals={signals}
+                  proSignals={proSignals}
+                  analysis={analysis}
+                  theme={theme}
+                  symbol={symbol}
+                  availableSymbols={availableSymbols}
+                  currentPrice={currentPrice}
+                  currentDigit={currentDigit}
+                  tickCount={tickCount}
+                  maxTicks={maxTicks}
+                  onMaxTicksChange={changeMaxTicks}
+                  onSymbolChange={changeSymbol}
+                  recentDigits={recentDigits}
+                />
               </TabsContent>
 
               <TabsContent value="even-odd" className="mt-0">
@@ -827,9 +797,6 @@ export default function DerivAnalysisApp() {
                 <ProfitPlusRebuild />
               </TabsContent>
 
-              <TabsContent value="dtrader" className="mt-0">
-                <DTraderTab theme={theme} />
-              </TabsContent>
 
               <TabsContent value="money-maker" className="mt-0">
                 <MoneyMakerTab
@@ -887,13 +854,15 @@ export default function DerivAnalysisApp() {
       />
 
       {/* Floating AI Scanner */}
-      <FloatingAIScanner 
-        theme={theme} 
-        availableSymbols={availableSymbols}
-        onScanComplete={(results) => {
-          console.log("[v0] AI Scanner results:", results)
-        }}
-      />
+      {showAIScanner && (
+        <FloatingAIScanner 
+          theme={theme} 
+          availableSymbols={availableSymbols}
+          onScanComplete={(results) => {
+            console.log("[v0] AI Scanner results:", results)
+          }}
+        />
+      )}
 
       {/* API Token Modal */}
       <ApiTokenModal

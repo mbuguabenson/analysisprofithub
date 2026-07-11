@@ -1063,6 +1063,43 @@ export function SmartAuto24Tab({
       ) : (
         <>
           <Card
+            className={`rounded-lg sm:rounded-xl p-4 sm:p-5 border ${theme === "dark" ? "bg-linear-to-br from-[#0f1629]/80 to-[#1a2235]/80 border-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.2)]" : "bg-white border-gray-200 shadow-lg"}`}
+          >
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <span className={`text-[10px] uppercase tracking-[0.35em] font-semibold ${theme === "dark" ? "text-cyan-400" : "text-slate-600"}`}>
+                  SmartAuto24
+                </span>
+                <h2 className={`mt-2 text-2xl sm:text-3xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                  Real-time Strategy Intelligence
+                </h2>
+                <p className={`mt-2 max-w-2xl text-sm leading-6 ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
+                  Strategy analytics, signal guidance, and market condition insight tailored for SmartAuto24 trading.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full sm:w-auto">
+                <div className={`rounded-2xl p-3 border ${theme === "dark" ? "bg-blue-500/5 border-blue-500/20" : "bg-blue-50 border-blue-100"}`}>
+                  <p className={`text-[9px] uppercase tracking-[0.3em] font-semibold ${theme === "dark" ? "text-blue-200" : "text-blue-600"}`}>Market</p>
+                  <p className={`mt-2 font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>{symbol || "N/A"}</p>
+                </div>
+                <div className={`rounded-2xl p-3 border ${theme === "dark" ? "bg-purple-500/5 border-purple-500/20" : "bg-purple-50 border-purple-100"}`}>
+                  <p className={`text-[9px] uppercase tracking-[0.3em] font-semibold ${theme === "dark" ? "text-purple-200" : "text-purple-600"}`}>Price</p>
+                  <p className={`mt-2 font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>{(marketPrice || 0).toFixed(5)}</p>
+                </div>
+                <div className={`rounded-2xl p-3 border ${theme === "dark" ? "bg-amber-500/5 border-amber-500/20" : "bg-amber-50 border-amber-100"}`}>
+                  <p className={`text-[9px] uppercase tracking-[0.3em] font-semibold ${theme === "dark" ? "text-amber-200" : "text-amber-600"}`}>Last Digit</p>
+                  <p className={`mt-2 font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>{lastDigit ?? "N/A"}</p>
+                </div>
+                <div className={`rounded-2xl p-3 border ${theme === "dark" ? "bg-cyan-500/5 border-cyan-500/20" : "bg-cyan-50 border-cyan-100"}`}>
+                  <p className={`text-[9px] uppercase tracking-[0.3em] font-semibold ${theme === "dark" ? "text-cyan-200" : "text-cyan-600"}`}>Ticks</p>
+                  <p className={`mt-2 font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>{tickHistory.length}</p>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card
             className={`p-6 border-2 backdrop-blur-xl rounded-2xl transition-all ${theme === "dark"
               ? "bg-gradient-to-r from-emerald-600/20 via-emerald-500/15 to-teal-600/15 border-emerald-400/40 shadow-lg shadow-emerald-500/20"
               : "bg-gradient-to-r from-emerald-100/50 via-white/50 to-teal-50/50 border-emerald-400/50 shadow-md"
