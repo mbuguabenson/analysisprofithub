@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import { useDerivAPI } from "@/lib/deriv-api-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,6 +19,10 @@ import { TradingStatsPanel } from "@/components/trading-stats-panel"
 import { TransactionHistory } from "@/components/transaction-history"
 import { TradingJournalPanel } from "@/components/trading-journal-panel"
 import { TradeLog } from "@/components/trade-log"
+import { DigitDistribution } from "@/components/digit-distribution"
+import { DigitDistributionCards } from "@/components/digit-distribution-cards"
+import { LastDigitsLineChart } from "@/components/charts/last-digits-line-chart"
+import { LastDigitsChart } from "@/components/charts/last-digits-chart"
 import { SmartAuto24Engine } from "@/lib/smartauto24-engine-integration"
 import { useSmartAuto24 } from "@/hooks/use-smartauto24"
 import type { BotSignal } from "@/lib/bot-engines"
@@ -92,9 +96,29 @@ export function SmartAuto24Tab({
     "Over/Under": 2.6,
     Differs: 2.3,
     Matches: 1.8,
+    Accumulators: 1.8,
+    "Rise/Fall": 2.0,
+    "High/Low": 2.0,
   })
 
   const [ticksPerTrade, setTicksPerTrade] = useState<number>(1)
+  const [tradeMode, setTradeMode] = useState<"manual" | "auto">("manual")
+  const [subTab, setSubTab] = useState<"analysis" | "console" | "summary">("analysis")
+  const [manualContractType, setManualContractType] = useState("DIGITMATCH")
+  const [manualDuration, setManualDuration] = useState(5)
+  const [manualEntryDigit, setManualEntryDigit] = useState<number | null>(null)
+  const [manualUseMartingale, setManualUseMartingale] = useState(true)
+  const [manualTp, setManualTp] = useState(1)
+  const [manualSl, setManualSl] = useState(0.5)
+  const [tradeConsoleHistory, setTradeConsoleHistory] = useState<any[]>([])
+  const [autoRunning, setAutoRunning] = useState(false)
+  const [autoTargetHours, setAutoTargetHours] = useState(6)
+  const [autoTradesPerHour, setAutoTradesPerHour] = useState(4)
+  const [autoSkipCandles, setAutoSkipCandles] = useState(false)
+  const [tickHistory, setTickHistory] = useState<number[]>([])
+  const [priceHistory, setPriceHistory] = useState<number[]>([])
+  const [suggestionMessage, setSuggestionMessage] = useState("Waiting for sufficient market data...")
+  const [marketAnalysis, setMarketAnalysis] = useState<any>({})
 
   // Trading state
   const [isRunning, setIsRunning] = useState(false)
@@ -296,6 +320,16 @@ export function SmartAuto24Tab({
         return updated.slice(-15)
       })
 
+      setTickHistory((prev) => {
+        const next = [...prev, lastDigitValue]
+        return next.slice(-500)
+      })
+
+      setPriceHistory((prev) => {
+        const next = [...prev, tick.quote]
+        return next.slice(-500)
+      })
+
       // Update over/under
       setOverUnderAnalysis((prev) => {
         const isOver = lastDigitValue >= 5
@@ -358,6 +392,189 @@ export function SmartAuto24Tab({
       }
     }
   }, [apiClient, isConnected, symbol])
+
+  const last500Digits = useMemo(() => tickHistory.slice(-500), [tickHistory])
+  const last60Digits = useMemo(() => tickHistory.slice(-60), [tickHistory])
+  const last500Prices = useMemo(() => priceHistory.slice(-500), [priceHistory])
+
+  const digitFrequencyData = useMemo(() => {
+    const counts: Record<number, { count: number; percentage: number }> = {}
+    const total = last60Digits.length || 1
+    for (let i = 0; i < 10; i++) {
+      const count = last60Digits.filter((digit) => digit === i).length
+      counts[i] = {
+        count,
+        percentage: (count / total) * 100,
+      }
+    }
+    return counts
+  }, [last60Digits])
+
+  const overUnderStats = useMemo(() => {
+    const overDigits = last60Digits.filter((digit) => digit >= 5).length
+    const underDigits = last60Digits.filter((digit) => digit <= 4).length
+    const total = overDigits + underDigits || 1
+    const overPct = (overDigits / total) * 100
+    const underPct = (underDigits / total) * 100
+    const highestOverDigit = [5, 6, 7, 8, 9].reduce((best, digit) => {
+      const count = last60Digits.filter((d) => d === digit).length
+      return count > best.count ? { digit, count } : best
+    }, { digit: 5, count: 0 })
+    const highestUnderDigit = [0, 1, 2, 3, 4].reduce((best, digit) => {
+      const count = last60Digits.filter((d) => d === digit).length
+      return count > best.count ? { digit, count } : best
+    }, { digit: 0, count: 0 })
+    return {
+      overDigits,
+      underDigits,
+      overPct,
+      underPct,
+      highestOverDigit,
+      highestUnderDigit,
+      preferredSide: overPct >= underPct ? "Over" : "Under",
+      power: Math.max(overPct, underPct),
+    }
+  }, [last60Digits])
+
+  const evenOddStats = useMemo(() => {
+    const even = last60Digits.filter((digit) => digit % 2 === 0).length
+    const odd = last60Digits.filter((digit) => digit % 2 !== 0).length
+    const total = even + odd || 1
+    return {
+      even,
+      odd,
+      evenPct: (even / total) * 100,
+      oddPct: (odd / total) * 100,
+      dominant: even > odd ? "EVEN" : "ODD",
+      deviation: Math.abs((even - odd) / total) * 100,
+    }
+  }, [last60Digits])
+
+  const riseFallStats = useMemo(() => {
+    let rise = 0
+    let fall = 0
+    for (let i = 1; i < last500Prices.length; i++) {
+      const diff = last500Prices[i] - last500Prices[i - 1]
+      if (diff > 0) rise++
+      if (diff < 0) fall++
+    }
+    const total = rise + fall || 1
+    return {
+      rise,
+      fall,
+      risePct: (rise / total) * 100,
+      fallPct: (fall / total) * 100,
+      dominant: rise >= fall ? "Rise" : "Fall",
+      deviation: Math.abs((rise - fall) / total) * 100,
+    }
+  }, [last500Prices])
+
+  const highLowStats = useMemo(() => {
+    const high = last60Digits.filter((digit) => digit >= 5).length
+    const low = last60Digits.filter((digit) => digit <= 4).length
+    const total = high + low || 1
+    return {
+      high,
+      low,
+      highPct: (high / total) * 100,
+      lowPct: (low / total) * 100,
+      dominant: high >= low ? "High" : "Low",
+      deviation: Math.abs((high - low) / total) * 100,
+    }
+  }, [last60Digits])
+
+  const bestDigits = useMemo(() => {
+    const sorted = Object.entries(digitFrequencyData)
+      .map(([digit, payload]) => ({ digit: Number(digit), count: payload.count, pct: payload.percentage }))
+      .sort((a, b) => b.count - a.count)
+    return {
+      hottest: sorted[0],
+      coldest: sorted[sorted.length - 1],
+      topTwo: sorted.slice(0, 2),
+    }
+  }, [digitFrequencyData])
+
+  const strategyGuide = useMemo(() => {
+    const result: any = { label: "No clear signal yet", explanation: "Waiting for 60 ticks of data.", entry: null, strength: 0 }
+    if (selectedStrategy === "Over/Under") {
+      const power = overUnderStats.power
+      const side = overUnderStats.preferredSide
+      const entryDigit = side === "Over" ? overUnderStats.highestOverDigit.digit : overUnderStats.highestUnderDigit.digit
+      result.label = `${side} Advantage`
+      result.explanation = `${side} has ${power.toFixed(1)}% strength over the last 60 ticks.`
+      result.entry = entryDigit
+      result.strength = power
+      if (power >= 55) {
+        result.explanation += ` Use entry digit ${entryDigit} and watch for ${side.toLowerCase()} signal strength increasing.`
+      }
+      if (power >= 60) {
+        result.label = `Strong ${side} Signal`
+      }
+    } else if (selectedStrategy === "Even/Odd") {
+      const dominance = evenOddStats.dominant
+      result.label = `${dominance} Dominant`
+      result.explanation = `${dominance} is ${dominance === "EVEN" ? evenOddStats.evenPct : evenOddStats.oddPct}% over the last 60 ticks.`
+      result.strength = evenOddStats.deviation
+      if (evenOddStats.deviation >= 7) {
+        result.explanation += ` Deviation is ${evenOddStats.deviation.toFixed(1)}%, signaling an entry on ${dominance}.`
+      }
+    } else if (selectedStrategy === "Rise/Fall") {
+      result.label = `${riseFallStats.dominant} Trend`
+      result.explanation = `${riseFallStats.risePct.toFixed(1)}% rise vs ${riseFallStats.fallPct.toFixed(1)}% fall over the last 500 price ticks.`
+      result.entry = riseFallStats.dominant
+      result.strength = riseFallStats.deviation
+      if (riseFallStats.deviation >= 8) {
+        result.explanation += ` Enter the current trend when it stays above 8% deviation.`
+      }
+    } else if (selectedStrategy === "Differs") {
+      result.label = `Cold Digit ${bestDigits.coldest.digit}`
+      result.explanation = `Digit ${bestDigits.coldest.digit} is the coldest in last 60 ticks with ${bestDigits.coldest.pct.toFixed(1)}% frequency.`
+      result.entry = bestDigits.coldest.digit
+      result.strength = 100 - bestDigits.coldest.pct
+    } else if (selectedStrategy === "Matches") {
+      result.label = `Hot Digit ${bestDigits.hottest.digit}`
+      result.explanation = `Digit ${bestDigits.hottest.digit} appears most often in last 60 ticks (${bestDigits.hottest.pct.toFixed(1)}%).`
+      result.entry = bestDigits.hottest.digit
+      result.strength = bestDigits.hottest.pct
+    } else if (selectedStrategy === "Accumulators") {
+      result.label = `Accumulator Focus`
+      result.explanation = `Watch paired digit clusters and the highest repeating digits in both Over and Under segments.`
+      result.entry = bestDigits.hottest.digit
+      result.strength = bestDigits.hottest.pct
+    } else if (selectedStrategy === "High/Low") {
+      result.label = `${highLowStats.dominant} Tick Bias`
+      result.explanation = `${highLowStats.dominant} has ${Math.max(highLowStats.highPct, highLowStats.lowPct).toFixed(1)}% share in last 60 ticks.`
+      result.entry = highLowStats.dominant === "High" ? overUnderStats.highestOverDigit.digit : overUnderStats.highestUnderDigit.digit
+      result.strength = Math.max(highLowStats.highPct, highLowStats.lowPct)
+    }
+    return result
+  }, [selectedStrategy, overUnderStats, evenOddStats, riseFallStats, highLowStats, bestDigits])
+
+  const entryWarning = useMemo(() => {
+    if (selectedStrategy === "Over/Under" && overUnderStats.power >= 55) {
+      const side = overUnderStats.preferredSide
+      const highDigits = side === "Over" ? [5, 6, 7, 8, 9] : [0, 1, 2, 3, 4]
+      const highestCounts = highDigits.map((digit) => ({ digit, count: last60Digits.filter((d) => d === digit).length })).sort((a, b) => b.count - a.count)
+      const topDigits = highestCounts.slice(0, 2).filter((item) => item.count >= 2)
+      if (topDigits.length >= 2) {
+        return `Strong ${side} signal because ${topDigits[0].digit} and ${topDigits[1].digit} are both high-frequency digits.`
+      }
+      if (side === "Over" && overUnderStats.underPct >= 55) {
+        return `Warning: Under strength is still high despite Over bias.`
+      }
+    }
+    return null
+  }, [selectedStrategy, overUnderStats, last60Digits])
+
+  const analysisGuidance = useMemo(() => {
+    if (strategyGuide.strength >= 60) {
+      return `High confidence. Entry point ${strategyGuide.entry ?? "TBD"}. Use up to 5 ticks skip logic if the opposite side appears.`
+    }
+    if (strategyGuide.strength >= 55) {
+      return `Moderate confidence. Watch for the entry digit and skip 1-3 opposite ticks.`
+    }
+    return `Data is still building. Use caution and wait for more than 60 ticks.`
+  }, [strategyGuide])
 
   const addAnalysisLog = (message: string, type: "info" | "success" | "warning" = "info") => {
     setAnalysisLog((prev) => [
@@ -1170,6 +1387,104 @@ export function SmartAuto24Tab({
               </Button>
             </div>
           </Card>
+
+          {/* SmartAuto24 Analytics Overview */}
+          {tickHistory.length > 0 && (
+            <Card
+              className={`rounded-lg sm:rounded-xl p-4 sm:p-5 border ${theme === "dark" ? "bg-linear-to-br from-[#0f1629]/80 to-[#1a2235]/80 border-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.2)]" : "bg-white border-gray-200 shadow-lg"}`}
+            >
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                <div>
+                  <h3 className={`text-lg sm:text-xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                    SmartAuto24 Analytics
+                  </h3>
+                  <p className={`text-sm mt-1 ${theme === "dark" ? "text-gray-400" : "text-gray-600"}`}>
+                    {analysisGuidance}
+                  </p>
+                </div>
+                <Badge
+                  className={`px-3 py-2 text-xs font-bold uppercase ${theme === "dark" ? "bg-slate-900/70 text-cyan-300 border border-cyan-600/30" : "bg-slate-100 text-slate-800"}`}
+                >
+                  {selectedStrategy}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+                <div className={`p-3 rounded-xl border ${theme === "dark" ? "bg-blue-500/5 border-blue-500/20" : "bg-blue-50 border-blue-100"}`}>
+                  <p className={`text-[10px] uppercase tracking-[0.25em] ${theme === "dark" ? "text-blue-200" : "text-blue-500"}`}>
+                    Over/Under
+                  </p>
+                  <p className={`mt-2 text-2xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                    {overUnderStats.overPct.toFixed(1)}% / {overUnderStats.underPct.toFixed(1)}%
+                  </p>
+                  <p className={`text-xs mt-2 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+                    {overUnderStats.preferredSide} bias
+                  </p>
+                </div>
+                <div className={`p-3 rounded-xl border ${theme === "dark" ? "bg-purple-500/5 border-purple-500/20" : "bg-purple-50 border-purple-100"}`}>
+                  <p className={`text-[10px] uppercase tracking-[0.25em] ${theme === "dark" ? "text-purple-200" : "text-purple-500"}`}>
+                    Even/Odd
+                  </p>
+                  <p className={`mt-2 text-2xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                    {evenOddStats.evenPct.toFixed(1)}% / {evenOddStats.oddPct.toFixed(1)}%
+                  </p>
+                  <p className={`text-xs mt-2 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+                    {evenOddStats.dominant} trend
+                  </p>
+                </div>
+                <div className={`p-3 rounded-xl border ${theme === "dark" ? "bg-amber-500/5 border-amber-500/20" : "bg-amber-50 border-amber-100"}`}>
+                  <p className={`text-[10px] uppercase tracking-[0.25em] ${theme === "dark" ? "text-amber-200" : "text-amber-500"}`}>
+                    Rise/Fall
+                  </p>
+                  <p className={`mt-2 text-2xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                    {riseFallStats.dominant}
+                  </p>
+                  <p className={`text-xs mt-2 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+                    {riseFallStats.risePct.toFixed(1)}% / {riseFallStats.fallPct.toFixed(1)}%
+                  </p>
+                </div>
+                <div className={`p-3 rounded-xl border ${theme === "dark" ? "bg-cyan-500/5 border-cyan-500/20" : "bg-cyan-50 border-cyan-100"}`}>
+                  <p className={`text-[10px] uppercase tracking-[0.25em] ${theme === "dark" ? "text-cyan-200" : "text-cyan-500"}`}>
+                    Best Digits
+                  </p>
+                  <p className={`mt-2 text-2xl font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                    {bestDigits.hottest?.digit ?? "-"}
+                  </p>
+                  <p className={`text-xs mt-2 ${theme === "dark" ? "text-gray-400" : "text-gray-500"}`}>
+                    Cold: {bestDigits.coldest?.digit ?? "-"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className={`col-span-1 lg:col-span-2 rounded-xl p-4 border ${theme === "dark" ? "bg-linear-to-br from-[#0f1629]/70 to-[#1a2235]/70 border-blue-500/20" : "bg-white border-gray-200"}`}>
+                  <h4 className={`text-sm font-bold mb-3 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                    Digits Distribution
+                  </h4>
+                  <DigitDistribution
+                    frequencies={digitFrequencyData}
+                    currentDigit={lastDigit}
+                    theme={theme}
+                  />
+                </div>
+
+                <div className="space-y-4 col-span-1 lg:col-span-1">
+                  <div className={`rounded-xl p-4 border ${theme === "dark" ? "bg-linear-to-br from-[#0f1629]/70 to-[#1a2235]/70 border-purple-500/20" : "bg-white border-gray-200"}`}>
+                    <h4 className={`text-sm font-bold mb-3 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                      Last Digits Line Chart
+                    </h4>
+                    <LastDigitsLineChart digits={tickHistory.slice(-15)} />
+                  </div>
+                  <div className={`rounded-xl p-4 border ${theme === "dark" ? "bg-linear-to-br from-[#0f1629]/70 to-[#1a2235]/70 border-yellow-500/20" : "bg-white border-gray-200"}`}>
+                    <h4 className={`text-sm font-bold mb-3 ${theme === "dark" ? "text-white" : "text-gray-900"}`}>
+                      Recent Digits Pattern
+                    </h4>
+                    <LastDigitsChart digits={tickHistory.slice(-50)} />
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Real-time Session Status */}
           {status === "trading" && (
