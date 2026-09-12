@@ -116,15 +116,17 @@ export function DigitDistribution({ frequencies, currentDigit, theme, watchedDig
           )}
         </div>
 
-        {/* Count Label Below */}
-        <div className="text-center">
-          <div
-            className={`text-[8px] font-mono opacity-40 ${isCurrentDigit ? "text-orange-400" : theme === "dark" ? "text-slate-500" : "text-slate-400"
-              }`}
-          >
-            n={freq.count}
-          </div>
-        </div>
+        {/* Current digit cursor marker */}
+        {isCurrentDigit && (
+          <img
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-AamLWCKsNlaqVWfTuAGuWjgALCTlHd.png"
+            alt="Current digit indicator"
+            width={20}
+            height={12}
+            className="pointer-events-none absolute top-[calc(100%+5px)] z-10 h-2.5 w-4 object-contain"
+          />
+        )}
+
 
         {/* Floating Indicator */}
         {isCurrentDigit && (
