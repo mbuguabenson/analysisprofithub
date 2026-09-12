@@ -43,9 +43,9 @@ import { ResponsiveTabs } from "@/components/responsive-tabs"
 import { MoneyMakerTab } from "@/components/tabs/money-maker-tab"
 import type { Variants } from 'framer-motion';
 import { ToolsInfoTab } from "@/components/tabs/tools-info-tab"
-import SmartAdaptiveTradingTab from "@/components/tabs/smart-adaptive-trading"
 import { RiskDisclaimerModal } from "@/components/modals/risk-disclaimer-modal"
 import { MarketSelector } from "@/components/market-selector"
+import { MarketsTab } from "@/components/tabs/markets-tab"
 
 import { FloatingAIScanner } from "@/components/floating-ai-scanner"
 import { LiveChat } from "@/components/live-chat"
@@ -222,28 +222,23 @@ export default function DerivAnalysisApp() {
                } backdrop-blur-xl`}
           >
             <div className="mx-auto w-full px-2 sm:px-6 lg:px-8">
-              <div className="flex flex-nowrap items-center h-16 sm:h-20 gap-4 sm:gap-6 w-full justify-between overflow-hidden">
+              <div className="flex flex-nowrap items-center h-6 sm:h-7 gap-1 sm:gap-2 w-full justify-between overflow-hidden">
 
                 {/* Brand Name - Profithub Logo */}
-                <div className="flex items-center shrink-0 gap-2.5 sm:min-w-[220px]">
-                  <div className={`p-2 rounded-xl flex items-center justify-center shrink-0 ${theme === "dark" ? "bg-green-500/10" : "bg-green-50"}`}>
+                <div className="flex items-center shrink-0 gap-1.5 sm:min-w-0">
+                  <div className={`p-0.5 rounded-md flex items-center justify-center shrink-0 ${theme === "dark" ? "bg-green-500/10" : "bg-green-50"}`}>
                     <Image
                       src="/logo-profithub.png"
-                      alt="Profithub"
-                      width={24}
-                      height={24}
+                      alt="Profithub Analysis"
+                      width={14}
+                      height={14}
                       style={{ objectFit: "contain" }}
                       priority
                     />
                   </div>
-                  <div className="flex flex-col leading-none">
-                    <h1 className={`text-base sm:text-lg font-black tracking-tight uppercase bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent`}>
-                      Profithub
-                    </h1>
-                    <h2 className={`text-[8px] sm:text-[9px] font-black tracking-[0.25em] opacity-60 uppercase ${theme === "dark" ? "text-green-300" : "text-green-600"}`}>
-                      AI TRADING
-                    </h2>
-                  </div>
+                  <h1 className={`whitespace-nowrap text-[10px] sm:text-xs font-black tracking-tight uppercase bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent`}>
+                    Profithub Analysis
+                  </h1>
                 </div>
 
                 <div className="flex-1" />
@@ -254,11 +249,11 @@ export default function DerivAnalysisApp() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className={`h-8 px-3 text-[10px] rounded-lg font-bold flex items-center gap-1.5 transition-all ${theme === "dark"
+                        className={`h-6 px-1.5 text-[8px] rounded-sm font-bold flex items-center gap-1 transition-all ${theme === "dark"
                           ? "bg-slate-800/50 text-slate-300 border border-slate-700/50 hover:bg-blue-600 hover:text-white"
                           : "bg-gray-100 text-slate-700 hover:bg-blue-500 hover:text-white"}`}
                       >
-                        <User className="h-3.5 w-3.5" />
+                        <User className="h-3 w-3" />
                         Account
                       </Button>
                     </Link>
@@ -266,11 +261,11 @@ export default function DerivAnalysisApp() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowRiskModal(true)}
-                      className={`h-8 px-3 text-[10px] rounded-lg font-bold flex items-center gap-1 transition-all ${theme === "dark"
+                      className={`h-6 px-1.5 text-[8px] rounded-sm font-bold flex items-center gap-1 transition-all ${theme === "dark"
                         ? "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
                         : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"}`}
                     >
-                      <AlertTriangle className="h-3.5 w-3.5" />
+                      <AlertTriangle className="h-3 w-3" />
                       Risk
                     </Button>
                     <LiveChat />
@@ -278,16 +273,16 @@ export default function DerivAnalysisApp() {
                       variant="ghost"
                       size="icon"
                       onClick={toggleTheme}
-                      className={`h-8 w-8 rounded-lg transition-all ${theme === "dark"
+                      className={`h-6 w-6 rounded-sm transition-all ${theme === "dark"
                         ? "bg-white/5 text-yellow-500 hover:bg-white/10"
                         : "bg-black/5 text-slate-700 hover:bg-black/10"
                         }`}
                     >
-                      {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                      {theme === "dark" ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
                     </Button>
                   </div>
 
-                  <DerivAuth theme={theme} />
+                  <div className="scale-90 origin-right"><DerivAuth theme={theme} /></div>
 
                   {/* Unified Hamburger Sheet containing Dashboard and mobile links */}
                   <div className="flex items-center">
@@ -296,13 +291,13 @@ export default function DerivAnalysisApp() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className={`h-9 w-9 rounded-lg transition-all ${
+                          className={`h-7 w-7 rounded-md transition-all ${
                             theme === "dark" 
                               ? "bg-white/5 text-white hover:bg-white/10" 
                               : "bg-black/5 text-slate-900 hover:bg-black/10"
                           }`}
                         >
-                          <Menu className="h-5 w-5" />
+                          <Menu className="h-4 w-4" />
                         </Button>
                       </SheetTrigger>
                       <SheetContent
@@ -347,7 +342,7 @@ export default function DerivAnalysisApp() {
                 </div>
               </div>
 
-              <div className="px-2 sm:px-6 lg:px-8 flex flex-col gap-2 pb-2">
+              <div className="px-2 sm:px-6 lg:px-8 flex flex-col gap-1 pb-1">
                 {/* Navigation Tabs - Clean Design */}
                 <div className="flex items-center justify-start w-full overflow-x-auto no-scrollbar -mx-2 sm:-mx-6 lg:-mx-8 px-2 sm:px-6 lg:px-8 py-1">
                   <div className={`inline-flex rounded-xl border transition-all duration-500 p-0.5 gap-0.5 ${theme === "dark" 
@@ -357,7 +352,7 @@ export default function DerivAnalysisApp() {
                     <div className="overflow-x-auto no-scrollbar flex">
                       <ResponsiveTabs theme={theme} value={activeTab} onValueChange={setActiveTab}>
                         {[
-                          "smart-adaptive",
+                          "markets",
                           "smart-analysis",
                           "smartauto24",
                           "profit-plus",
@@ -374,7 +369,7 @@ export default function DerivAnalysisApp() {
                           "tools-info",
                         ].filter(tab => !siteConfig?.hiddenTabs?.includes(tab)).map((tab) => {
                           const tabLabels: Record<string, string> = {
-                            "smart-adaptive": "Smart Adaptive",
+                            "markets": "Markets",
                             "smart-analysis": "Smart Analysis",
                             "smartauto24": "SmartAuto24",
                             "profit-plus": "ProfitPlus",
@@ -391,7 +386,7 @@ export default function DerivAnalysisApp() {
                             "tools-info": "Tools Info"
                           }
                           const tabIcons: Record<string, any> = {
-                            "smart-adaptive": Sliders,
+                            "markets": Activity,
                             "smart-analysis": LineChart,
                             "smartauto24": Sparkles,
                             "profit-plus": TrendingUp,
@@ -442,7 +437,7 @@ export default function DerivAnalysisApp() {
                     
                     {/* 1. Market Selection Tile */}
                       {availableSymbols.length > 0 && (
-                        <div className={`flex flex-col items-center justify-center min-w-[110px] sm:min-w-[170px] h-9 sm:h-11 rounded-lg sm:rounded-xl border transition-all ${theme === "dark"
+                        <div className={`flex flex-col items-center justify-center min-w-[90px] sm:min-w-[140px] h-8 sm:h-9 rounded-md sm:rounded-lg border transition-all ${theme === "dark"
                           ? "bg-white/[0.03] border-white/10 shadow-inner"
                           : "bg-gray-50 border-gray-200 shadow-xs"
                           }`}>
@@ -461,7 +456,7 @@ export default function DerivAnalysisApp() {
                       )}
 
                       {/* 2. Price Tile */}
-                      <div className={`flex flex-col items-center justify-center min-w-[75px] sm:min-w-[140px] h-9 sm:h-11 rounded-lg sm:rounded-xl border ${theme === "dark"
+                      <div className={`flex flex-col items-center justify-center min-w-[62px] sm:min-w-[112px] h-8 sm:h-9 rounded-md sm:rounded-lg border ${theme === "dark"
                         ? "bg-white/[0.03] border-white/10 shadow-inner"
                         : "bg-gray-50 border-gray-200 shadow-xs"
                         }`}>
@@ -474,7 +469,7 @@ export default function DerivAnalysisApp() {
                       </div>
 
                       {/* 3. Last Digit Tile */}
-                      <div className={`flex flex-col items-center justify-center min-w-[55px] sm:min-w-[110px] h-9 sm:h-11 rounded-lg sm:rounded-xl border relative overflow-hidden transition-all duration-300 ${theme === "dark"
+                      <div className={`flex flex-col items-center justify-center min-w-[48px] sm:min-w-[88px] h-8 sm:h-9 rounded-md sm:rounded-lg border relative overflow-hidden transition-all duration-300 ${theme === "dark"
                         ? "bg-orange-500/[0.08] border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.12)]"
                         : "bg-orange-50 border-orange-200"
                         }`}>
@@ -488,7 +483,7 @@ export default function DerivAnalysisApp() {
                       </div>
 
                       {/* 4. Ticks Tile */}
-                      <div className={`flex flex-col items-center justify-center min-w-[75px] sm:min-w-[140px] h-9 sm:h-11 rounded-lg sm:rounded-xl border ${theme === "dark"
+                      <div className={`flex flex-col items-center justify-center min-w-[62px] sm:min-w-[112px] h-8 sm:h-9 rounded-md sm:rounded-lg border ${theme === "dark"
                         ? "bg-white/[0.03] border-white/10 shadow-inner"
                         : "bg-gray-50 border-gray-200 shadow-xs"
                         }`}>
@@ -513,7 +508,7 @@ export default function DerivAnalysisApp() {
                       </div>
 
                       {/* 5. Watch Tile - Optimized Ultra-Compact */}
-                      <div className={`flex flex-col items-center justify-center min-w-[45px] sm:min-w-[80px] h-9 sm:h-11 rounded-lg sm:rounded-xl border transition-all ${theme === "dark"
+                      <div className={`flex flex-col items-center justify-center min-w-[40px] sm:min-w-[68px] h-8 sm:h-9 rounded-md sm:rounded-lg border transition-all ${theme === "dark"
                         ? "bg-white/[0.03] border-white/10 hover:border-amber-500/50 shadow-inner"
                         : "bg-gray-50 border-gray-200 shadow-xs"
                         }`}>
@@ -570,6 +565,10 @@ export default function DerivAnalysisApp() {
                   Reconnecting to Deriv API... Some data may be delayed.
                 </div>
               )}
+              <TabsContent value="markets" className="mt-0">
+                <MarketsTab theme={theme} availableSymbols={availableSymbols} initialSymbol={symbol} />
+              </TabsContent>
+
               <TabsContent value="smart-analysis" className="mt-0 space-y-2 sm:space-y-3 md:space-y-4">
                 <div
                   className={`rounded-lg sm:rounded-xl p-2 sm:p-3 border flex items-center justify-between ${theme === "dark" ? "bg-linear-to-br from-[#0f1629]/80 to-[#1a2235]/80 border-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.2)]" : "bg-white border-gray-200 shadow-lg"}`}
@@ -831,10 +830,6 @@ export default function DerivAnalysisApp() {
                   availableSymbols={availableSymbols}
                   recentDigits={recent100Digits}
                 />
-              </TabsContent>
-
-              <TabsContent value="smart-adaptive" className="mt-0">
-                {analysis && <SmartAdaptiveTradingTab signals={signals} analysis={analysis} symbol={symbol} theme={theme} currentPrice={currentPrice} currentDigit={currentDigit} tickCount={tickCount} />}
               </TabsContent>
 
               <TabsContent value="tools-info" className="mt-0">
