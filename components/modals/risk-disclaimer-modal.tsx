@@ -37,6 +37,9 @@ export function RiskDisclaimerModal({ isOpen, onClose, onAccept, theme = "dark" 
                             <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8" />
                         </div>
                         <DialogTitle className="text-xl sm:text-2xl font-bold tracking-tight">Important Risk Disclosure</DialogTitle>
+                        <DialogDescription className="sr-only">
+                            Review the risks of trading Deriv products before continuing.
+                        </DialogDescription>
                     </DialogHeader>
 
                     <div className={`mt-6 space-y-4 relative z-10 text-xs sm:text-sm leading-relaxed ${theme === "dark" ? "text-slate-300" : "text-slate-600"
