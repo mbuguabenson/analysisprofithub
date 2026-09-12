@@ -520,7 +520,7 @@ export default function DerivAnalysisApp() {
           </header>
         )}
 
-        <main className="flex-1 pt-[180px] sm:pt-[240px] pb-4 px-1 sm:px-4 space-y-2 sm:space-y-4 max-w-7xl mx-auto w-full">
+        <main className="flex-1 pt-[68px] sm:pt-[72px] pb-4 px-1 sm:px-4 space-y-2 sm:space-y-4 max-w-7xl mx-auto w-full">
           {connectionStatus === "disconnected" && tickCount === 0 ? (
             <div className="text-center py-12 sm:py-20 md:py-32">
               <h2
