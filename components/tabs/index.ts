@@ -1,5 +1,4 @@
 export { default as DashboardTab } from './DashboardTab';
-export { default as SmartAdaptiveTradingTab } from './smart-adaptive-trading';
 export { SmartAuto24Tab } from './smartauto24-tab';
 export { AutoBotTab } from './autobot-tab';
 export { AutomatedTab } from './automated-tab';

@@ -43,7 +43,6 @@ import { ResponsiveTabs } from "@/components/responsive-tabs"
 import { MoneyMakerTab } from "@/components/tabs/money-maker-tab"
 import type { Variants } from 'framer-motion';
 import { ToolsInfoTab } from "@/components/tabs/tools-info-tab"
-import SmartAdaptiveTradingTab from "@/components/tabs/smart-adaptive-trading"
 import { RiskDisclaimerModal } from "@/components/modals/risk-disclaimer-modal"
 import { MarketSelector } from "@/components/market-selector"
 
@@ -352,7 +351,6 @@ export default function DerivAnalysisApp() {
                     <div className="overflow-x-auto no-scrollbar flex">
                       <ResponsiveTabs theme={theme} value={activeTab} onValueChange={setActiveTab}>
                         {[
-                          "smart-adaptive",
                           "smart-analysis",
                           "smartauto24",
                           "profit-plus",
@@ -369,7 +367,6 @@ export default function DerivAnalysisApp() {
                           "tools-info",
                         ].filter(tab => !siteConfig?.hiddenTabs?.includes(tab)).map((tab) => {
                           const tabLabels: Record<string, string> = {
-                            "smart-adaptive": "Smart Adaptive",
                             "smart-analysis": "Smart Analysis",
                             "smartauto24": "SmartAuto24",
                             "profit-plus": "ProfitPlus",
@@ -386,7 +383,6 @@ export default function DerivAnalysisApp() {
                             "tools-info": "Tools Info"
                           }
                           const tabIcons: Record<string, any> = {
-                            "smart-adaptive": Sliders,
                             "smart-analysis": LineChart,
                             "smartauto24": Sparkles,
                             "profit-plus": TrendingUp,
@@ -437,7 +433,7 @@ export default function DerivAnalysisApp() {
                     
                     {/* 1. Market Selection Tile */}
                       {availableSymbols.length > 0 && (
-                        <div className={`flex flex-col items-center justify-center min-w-[110px] sm:min-w-[170px] h-9 sm:h-11 rounded-lg sm:rounded-xl border transition-all ${theme === "dark"
+                        <div className={`flex flex-col items-center justify-center min-w-[90px] sm:min-w-[140px] h-8 sm:h-9 rounded-md sm:rounded-lg border transition-all ${theme === "dark"
                           ? "bg-white/[0.03] border-white/10 shadow-inner"
                           : "bg-gray-50 border-gray-200 shadow-xs"
                           }`}>
@@ -456,7 +452,7 @@ export default function DerivAnalysisApp() {
                       )}
 
                       {/* 2. Price Tile */}
-                      <div className={`flex flex-col items-center justify-center min-w-[75px] sm:min-w-[140px] h-9 sm:h-11 rounded-lg sm:rounded-xl border ${theme === "dark"
+                      <div className={`flex flex-col items-center justify-center min-w-[62px] sm:min-w-[112px] h-8 sm:h-9 rounded-md sm:rounded-lg border ${theme === "dark"
                         ? "bg-white/[0.03] border-white/10 shadow-inner"
                         : "bg-gray-50 border-gray-200 shadow-xs"
                         }`}>
@@ -469,7 +465,7 @@ export default function DerivAnalysisApp() {
                       </div>
 
                       {/* 3. Last Digit Tile */}
-                      <div className={`flex flex-col items-center justify-center min-w-[55px] sm:min-w-[110px] h-9 sm:h-11 rounded-lg sm:rounded-xl border relative overflow-hidden transition-all duration-300 ${theme === "dark"
+                      <div className={`flex flex-col items-center justify-center min-w-[48px] sm:min-w-[88px] h-8 sm:h-9 rounded-md sm:rounded-lg border relative overflow-hidden transition-all duration-300 ${theme === "dark"
                         ? "bg-orange-500/[0.08] border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.12)]"
                         : "bg-orange-50 border-orange-200"
                         }`}>
@@ -483,7 +479,7 @@ export default function DerivAnalysisApp() {
                       </div>
 
                       {/* 4. Ticks Tile */}
-                      <div className={`flex flex-col items-center justify-center min-w-[75px] sm:min-w-[140px] h-9 sm:h-11 rounded-lg sm:rounded-xl border ${theme === "dark"
+                      <div className={`flex flex-col items-center justify-center min-w-[62px] sm:min-w-[112px] h-8 sm:h-9 rounded-md sm:rounded-lg border ${theme === "dark"
                         ? "bg-white/[0.03] border-white/10 shadow-inner"
                         : "bg-gray-50 border-gray-200 shadow-xs"
                         }`}>
@@ -508,7 +504,7 @@ export default function DerivAnalysisApp() {
                       </div>
 
                       {/* 5. Watch Tile - Optimized Ultra-Compact */}
-                      <div className={`flex flex-col items-center justify-center min-w-[45px] sm:min-w-[80px] h-9 sm:h-11 rounded-lg sm:rounded-xl border transition-all ${theme === "dark"
+                      <div className={`flex flex-col items-center justify-center min-w-[40px] sm:min-w-[68px] h-8 sm:h-9 rounded-md sm:rounded-lg border transition-all ${theme === "dark"
                         ? "bg-white/[0.03] border-white/10 hover:border-amber-500/50 shadow-inner"
                         : "bg-gray-50 border-gray-200 shadow-xs"
                         }`}>
@@ -826,10 +822,6 @@ export default function DerivAnalysisApp() {
                   availableSymbols={availableSymbols}
                   recentDigits={recent100Digits}
                 />
-              </TabsContent>
-
-              <TabsContent value="smart-adaptive" className="mt-0">
-                {analysis && <SmartAdaptiveTradingTab signals={signals} analysis={analysis} symbol={symbol} theme={theme} currentPrice={currentPrice} currentDigit={currentDigit} tickCount={tickCount} />}
               </TabsContent>
 
               <TabsContent value="tools-info" className="mt-0">
