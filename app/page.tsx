@@ -222,21 +222,21 @@ export default function DerivAnalysisApp() {
                } backdrop-blur-xl`}
           >
             <div className="mx-auto w-full px-2 sm:px-6 lg:px-8">
-              <div className="flex flex-nowrap items-center h-12 sm:h-14 gap-2 sm:gap-4 w-full justify-between overflow-hidden">
+              <div className="flex flex-nowrap items-center h-6 sm:h-7 gap-1 sm:gap-2 w-full justify-between overflow-hidden">
 
                 {/* Brand Name - Profithub Logo */}
                 <div className="flex items-center shrink-0 gap-1.5 sm:min-w-0">
-                  <div className={`p-1.5 rounded-lg flex items-center justify-center shrink-0 ${theme === "dark" ? "bg-green-500/10" : "bg-green-50"}`}>
+                  <div className={`p-0.5 rounded-md flex items-center justify-center shrink-0 ${theme === "dark" ? "bg-green-500/10" : "bg-green-50"}`}>
                     <Image
                       src="/logo-profithub.png"
                       alt="Profithub Analysis"
-                      width={20}
-                      height={20}
+                      width={14}
+                      height={14}
                       style={{ objectFit: "contain" }}
                       priority
                     />
                   </div>
-                  <h1 className={`whitespace-nowrap text-sm sm:text-base font-black tracking-tight uppercase bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent`}>
+                  <h1 className={`whitespace-nowrap text-[10px] sm:text-xs font-black tracking-tight uppercase bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent`}>
                     Profithub Analysis
                   </h1>
                 </div>
@@ -249,11 +249,11 @@ export default function DerivAnalysisApp() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className={`h-7 px-2 text-[9px] rounded-md font-bold flex items-center gap-1 transition-all ${theme === "dark"
+                        className={`h-6 px-1.5 text-[8px] rounded-sm font-bold flex items-center gap-1 transition-all ${theme === "dark"
                           ? "bg-slate-800/50 text-slate-300 border border-slate-700/50 hover:bg-blue-600 hover:text-white"
                           : "bg-gray-100 text-slate-700 hover:bg-blue-500 hover:text-white"}`}
                       >
-                        <User className="h-3.5 w-3.5" />
+                        <User className="h-3 w-3" />
                         Account
                       </Button>
                     </Link>
@@ -261,11 +261,11 @@ export default function DerivAnalysisApp() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowRiskModal(true)}
-                      className={`h-7 px-2 text-[9px] rounded-md font-bold flex items-center gap-1 transition-all ${theme === "dark"
+                      className={`h-6 px-1.5 text-[8px] rounded-sm font-bold flex items-center gap-1 transition-all ${theme === "dark"
                         ? "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
                         : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"}`}
                     >
-                      <AlertTriangle className="h-3.5 w-3.5" />
+                      <AlertTriangle className="h-3 w-3" />
                       Risk
                     </Button>
                     <LiveChat />
@@ -273,16 +273,16 @@ export default function DerivAnalysisApp() {
                       variant="ghost"
                       size="icon"
                       onClick={toggleTheme}
-                      className={`h-7 w-7 rounded-md transition-all ${theme === "dark"
+                      className={`h-6 w-6 rounded-sm transition-all ${theme === "dark"
                         ? "bg-white/5 text-yellow-500 hover:bg-white/10"
                         : "bg-black/5 text-slate-700 hover:bg-black/10"
                         }`}
                     >
-                      {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                      {theme === "dark" ? <Sun className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
                     </Button>
                   </div>
 
-                  <DerivAuth theme={theme} />
+                  <div className="scale-90 origin-right"><DerivAuth theme={theme} /></div>
 
                   {/* Unified Hamburger Sheet containing Dashboard and mobile links */}
                   <div className="flex items-center">
@@ -297,7 +297,7 @@ export default function DerivAnalysisApp() {
                               : "bg-black/5 text-slate-900 hover:bg-black/10"
                           }`}
                         >
-                          <Menu className="h-5 w-5" />
+                          <Menu className="h-4 w-4" />
                         </Button>
                       </SheetTrigger>
                       <SheetContent
