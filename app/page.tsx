@@ -79,7 +79,7 @@ export default function DerivAnalysisApp() {
   const [showAIScanner, setShowAIScanner] = useState(false)
   const [lineChartDigits, setLineChartDigits] = useState(10)
 
-  const [siteConfig, setSiteConfig = useState<any>(null)
+  const [siteConfig, setSiteConfig] = useState<any>(null)
   const [watchedDigits, setWatchedDigits] = useState<number[]>(() => {
     if (typeof window === "undefined") return []
     const saved = localStorage.getItem("deriv_watched_digits")
