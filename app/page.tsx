@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from 'next/link'
-import Image from 'next/image'
 import { DigitDistribution } from "@/components/digit-distribution"
 import { SignalsTab } from "@/components/tabs/signals-tab"
 import { ProSignalsTab } from "@/components/tabs/pro-signals-tab"
@@ -34,13 +33,10 @@ import { DerivAuth } from "@/components/deriv-auth"
 import { AutoBotTab } from "@/components/tabs/autobot-tab"
 import { AutomatedTab } from "@/components/tabs/automated-tab"
 import { SmartAuto24Tab } from "@/components/tabs/smartauto24-tab"
-import { ProfitPlusTabV2 } from "@/components/tabs/profit-plus-tab-v2"
-import { ProfitPlusRebuild } from "@/components/tabs/profit-plus-rebuild"
 import { AdvancedSignalsTab } from "@/components/advanced-signals-tab"
 import { useGlobalTradingContext } from "@/hooks/use-global-trading-context"
 import { verifier } from "@/lib/system-verifier"
 import { ResponsiveTabs } from "@/components/responsive-tabs"
-import { MoneyMakerTab } from "@/components/tabs/money-maker-tab"
 import type { Variants } from 'framer-motion';
 import { ToolsInfoTab } from "@/components/tabs/tools-info-tab"
 import { RiskDisclaimerModal } from "@/components/modals/risk-disclaimer-modal"
@@ -226,16 +222,6 @@ export default function DerivAnalysisApp() {
 
                 {/* Brand Name - Profithub Logo */}
                 <div className="flex items-center shrink-0 gap-1.5 sm:min-w-0">
-                  <div className={`p-0.5 rounded-md flex items-center justify-center shrink-0 ${theme === "dark" ? "bg-green-500/10" : "bg-green-50"}`}>
-                    <Image
-                      src="/logo-profithub.png"
-                      alt="Profithub Analysis"
-                      width={14}
-                      height={14}
-                      style={{ objectFit: "contain" }}
-                      priority
-                    />
-                  </div>
                   <h1 className={`whitespace-nowrap text-[10px] sm:text-xs font-black tracking-tight uppercase bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent`}>
                     Profithub Analysis
                   </h1>
@@ -355,8 +341,6 @@ export default function DerivAnalysisApp() {
                           "markets",
                           "smart-analysis",
                           "smartauto24",
-                          "profit-plus",
-                          "money-maker",
                           "autobot",
                           "automated",
                           "signals-hub",
@@ -372,8 +356,6 @@ export default function DerivAnalysisApp() {
                             "markets": "Markets",
                             "smart-analysis": "Smart Analysis",
                             "smartauto24": "SmartAuto24",
-                            "profit-plus": "ProfitPlus",
-                            "money-maker": "Money Maker",
                             "autobot": "Auto Bot",
                             "automated": "Automated",
                             "signals-hub": "Signals Hub",
@@ -389,8 +371,6 @@ export default function DerivAnalysisApp() {
                             "markets": Activity,
                             "smart-analysis": LineChart,
                             "smartauto24": Sparkles,
-                            "profit-plus": TrendingUp,
-                            "money-maker": TrendingUp,
                             "autobot": Cpu,
                             "automated": Terminal,
                             "signals-hub": Flame,
@@ -817,20 +797,8 @@ export default function DerivAnalysisApp() {
                 />
               </TabsContent>
 
-              <TabsContent value="profit-plus" className="mt-0">
-                <ProfitPlusRebuild />
-              </TabsContent>
 
 
-              <TabsContent value="money-maker" className="mt-0">
-                <MoneyMakerTab
-                  theme={theme}
-                  symbol={symbol}
-                  onSymbolChange={changeSymbol}
-                  availableSymbols={availableSymbols}
-                  recentDigits={recent100Digits}
-                />
-              </TabsContent>
 
               <TabsContent value="tools-info" className="mt-0">
                 <ToolsInfoTab theme={theme} connectionLogs={connectionLogs} />
