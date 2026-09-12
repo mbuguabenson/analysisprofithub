@@ -4,7 +4,6 @@ import { useState } from "react"
 import { DerivHeader, tabs, type DerivTab } from "@/components/deriv-header"
 import { DerivAuth } from "@/components/deriv-auth"
 import { useDerivAPI } from "@/lib/deriv-api-context"
-import { useRouter } from "next/navigation"
 
 interface DerivPlatformsTabProps {
   theme?: "light" | "dark"
@@ -13,8 +12,6 @@ interface DerivPlatformsTabProps {
 export function DerivPlatformsTab({ theme = "dark" }: DerivPlatformsTabProps) {
   const [activeTab, setActiveTab] = useState<DerivTab>(tabs[0])
   const { token } = useDerivAPI()
-  const router = useRouter()
-
   const getUrl = (tab: DerivTab) => {
     let baseUrl = tab.url
     if (token) {

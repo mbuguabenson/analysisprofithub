@@ -5,7 +5,7 @@ import { useDeriv } from "@/hooks/use-deriv"
 import { Tabs, TabsContent, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Moon, Sun, User, AlertTriangle, Menu, TrendingUp, Layers, Eye, Hash, Clock, Activity, LayoutDashboard, Sliders, LineChart, Sparkles, Cpu, Terminal, Radio, Flame, Percent, CheckSquare, XCircle, HelpCircle, BrainCircuit, ArrowUpDown, ExternalLink } from 'lucide-react'
+import { Moon, Sun, User, AlertTriangle, Menu, TrendingUp, Layers, Eye, Hash, Clock, Activity, LayoutDashboard, Sliders, LineChart, Sparkles, Cpu, Terminal, Radio, Flame, Percent, CheckSquare, XCircle, HelpCircle, BrainCircuit, ArrowUpDown } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,8 +77,9 @@ export default function DerivAnalysisApp() {
   const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false)
   const [showRiskModal, setShowRiskModal] = useState(false)
   const [showAIScanner, setShowAIScanner] = useState(false)
+  const [lineChartDigits, setLineChartDigits] = useState(10)
 
-  const [siteConfig, setSiteConfig] = useState<any>(null)
+  const [siteConfig, setSiteConfig = useState<any>(null)
   const [watchedDigits, setWatchedDigits] = useState<number[]>(() => {
     if (typeof window === "undefined") return []
     const saved = localStorage.getItem("deriv_watched_digits")
@@ -349,7 +350,7 @@ export default function DerivAnalysisApp() {
               <div className="px-2 sm:px-6 lg:px-8 flex flex-col gap-2 pb-2">
                 {/* Navigation Tabs - Clean Design */}
                 <div className="flex items-center justify-start w-full overflow-x-auto no-scrollbar -mx-2 sm:-mx-6 lg:-mx-8 px-2 sm:px-6 lg:px-8 py-1">
-                  <div className={`inline-flex rounded-2xl border transition-all duration-500 p-1 gap-1.5 ${theme === "dark" 
+                  <div className={`inline-flex rounded-xl border transition-all duration-500 p-0.5 gap-0.5 ${theme === "dark" 
                     ? "bg-slate-950/45 border-white/5 shadow-inner backdrop-blur-md" 
                     : "bg-slate-100/80 border-slate-200 shadow-xs backdrop-blur-md"
                     }`}>
@@ -411,7 +412,7 @@ export default function DerivAnalysisApp() {
                           <TabsTrigger
                             key={tab}
                             value={tab}
-                            className={`shrink-0 rounded-xl text-[10px] sm:text-xs h-9 px-3.5 sm:px-4.5 whitespace-nowrap transition-all duration-300 font-bold flex items-center gap-1.5 border-0 ${activeTab === tab
+                            className={`shrink-0 rounded-lg text-[9px] sm:text-[11px] h-8 px-2 sm:px-3 whitespace-nowrap transition-all duration-300 font-bold flex items-center gap-1 border-0 ${activeTab === tab
                               ? theme === "dark"
                                 ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
                                 : "bg-indigo-600 text-white shadow-md shadow-indigo-500/10"
@@ -605,12 +606,36 @@ export default function DerivAnalysisApp() {
                     <div
                       className={`rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-4 border ${theme === "dark" ? "bg-linear-to-br from-[#0f1629]/80 to-[#1a2235]/80 border-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.2)]" : "bg-white border-gray-200 shadow-lg"}`}
                     >
-                      <h3
-                        className={`text-sm sm:text-base md:text-lg font-bold mb-3 sm:mb-4 ${theme === "dark" ? "text-white" : "text-gray-900"}`}
-                      >
-                        Last Digits Line Chart
-                      </h3>
-                      <LastDigitsLineChart digits={recentDigits.slice(-10)} />
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4">
+                        <h3
+                          className={`text-sm sm:text-base md:text-lg font-bold ${theme === "dark" ? "text-white" : "text-gray-900"}`}
+                        >
+                          Last Digits Line Chart
+                        </h3>
+                        <div
+                          className={`flex items-center gap-1 rounded-lg border p-1 ${theme === "dark" ? "border-white/10 bg-black/20" : "border-gray-200 bg-gray-50"}`}
+                          role="group"
+                          aria-label="Number of digits to show"
+                        >
+                          {[10, 20, 30, 40, 50].map((count) => (
+                            <button
+                              key={count}
+                              type="button"
+                              onClick={() => setLineChartDigits(count)}
+                              aria-pressed={lineChartDigits === count}
+                              className={`rounded-md px-2 py-1 text-[10px] font-bold transition-colors ${lineChartDigits === count
+                                ? "bg-indigo-600 text-white"
+                                : theme === "dark"
+                                  ? "text-slate-400 hover:bg-white/10 hover:text-white"
+                                  : "text-slate-600 hover:bg-white hover:text-slate-900"
+                                }`}
+                            >
+                              {count}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <LastDigitsLineChart digits={recent100Digits.slice(-lineChartDigits)} />
                     </div>
 
                     <div
