@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Check, CheckSquare, Minus, Square, Zap } from "lucide-react"
+import { Check, CheckSquare, ChevronDown, ChevronUp, Square, Zap } from "lucide-react"
 import { DerivWebSocketManager } from "@/lib/deriv-websocket-manager"
 import type { TickData } from "@/lib/analysis-engine"
 import type { DerivSymbol } from "@/hooks/use-deriv"
@@ -54,11 +54,17 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
   const [snapshots, setSnapshots] = useState<Record<string, MarketSnapshot>>({})
   const snapshotsRef = useRef<Record<string, MarketSnapshot>>({})
   const [search, setSearch] = useState("")
+  const [showMarketPicker, setShowMarketPicker] = useState(true)
+  const [chartDigits, setChartDigits] = useState(10)
 
+  const supportedSymbols = useMemo(
+    () => availableSymbols.filter((item) => /volatility|jump|^r_/i.test(`${item.display_name} ${item.symbol}`)),
+    [availableSymbols],
+  )
   const visibleSymbols = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return availableSymbols.filter((item) => !query || `${item.display_name} ${item.symbol} ${item.market_display_name || ""}`.toLowerCase().includes(query))
-  }, [availableSymbols, search])
+    return supportedSymbols.filter((item) => !query || `${item.display_name} ${item.symbol} ${item.market_display_name || ""}`.toLowerCase().includes(query))
+  }, [supportedSymbols, search])
 
   useEffect(() => {
     managerRef.current = DerivWebSocketManager.getInstance()
@@ -132,7 +138,7 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
     })
   }
 
-  const selectAll = () => setSelected(new Set(availableSymbols.map((item) => item.symbol)))
+  const selectAll = () => setSelected(new Set(supportedSymbols.map((item) => item.symbol)))
   const clearAll = () => setSelected(new Set())
   const isDark = theme === "dark"
 
@@ -148,10 +154,13 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
           <button type="button" onClick={selectAll} className="flex h-8 items-center gap-1 rounded-md bg-indigo-600 px-2 text-[10px] font-bold text-white"><CheckSquare className="h-3.5 w-3.5" />All</button>
           <button type="button" onClick={clearAll} className={`flex h-8 items-center gap-1 rounded-md border px-2 text-[10px] font-bold ${isDark ? "border-white/10 text-slate-300" : "border-slate-200 text-slate-600"}`}><Square className="h-3.5 w-3.5" />Clear</button>
           <span className="text-[10px] font-semibold text-slate-500">{selected.size} selected</span>
+          <button type="button" onClick={() => setShowMarketPicker((visible) => !visible)} className={`flex h-8 items-center gap-1 rounded-md border px-2 text-[10px] font-bold ${isDark ? "border-white/10 text-slate-300" : "border-slate-200 text-slate-600"}`} aria-expanded={showMarketPicker}>
+            {showMarketPicker ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />} Markets
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8">
+      {showMarketPicker && <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8">
         {visibleSymbols.map((item) => {
           const active = selected.has(item.symbol)
           return <button key={item.symbol} type="button" onClick={() => toggle(item.symbol)} className={`flex items-center gap-2 rounded-lg border px-2 py-2 text-left transition-colors ${active ? "border-indigo-500/60 bg-indigo-500/10" : isDark ? "border-white/8 bg-white/[0.02]" : "border-slate-200 bg-white"}`}>
@@ -159,9 +168,9 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
             <span className="min-w-0 truncate text-[10px] font-bold">{item.display_name || item.symbol}</span>
           </button>
         })}
-      </div>
+      </div>}
 
-      <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid min-w-0 grid-cols-1 gap-2 xl:grid-cols-2 2xl:grid-cols-2">
         {[...selected].map((symbol) => {
           const item = availableSymbols.find((market) => market.symbol === symbol)
           if (!item) return null
@@ -170,7 +179,13 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
           return <article key={symbol} className={`min-w-0 overflow-hidden rounded-xl border p-3 ${isDark ? "border-white/10 bg-slate-950/60" : "border-slate-200 bg-white"}`}>
             <div className="mb-2 flex items-center justify-between"><div><h3 className="text-xs font-bold">{item.display_name}</h3><p className="text-[9px] text-slate-500">{item.symbol} · {snapshot.tickCount} ticks</p></div><button type="button" onClick={() => toggle(symbol)} className="text-[10px] text-slate-500 hover:text-red-400">Remove</button></div>
             <div className="mb-2 grid grid-cols-2 gap-2"><div className="rounded-md bg-indigo-500/10 p-2"><p className="text-[9px] uppercase text-slate-500">Price</p><p className="font-mono text-sm font-bold text-indigo-400">{snapshot.price === null ? "—" : snapshot.price}</p></div><div className="rounded-md bg-emerald-500/10 p-2"><p className="text-[9px] uppercase text-slate-500">Last digit</p><p className="font-mono text-sm font-bold text-emerald-400">{snapshot.digits.at(-1) ?? "—"}</p></div></div>
-            <LastDigitsLineChart digits={snapshot.digits.slice(-20)} />
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">Last digits</span>
+              <div className={`flex gap-0.5 rounded-md p-0.5 ${isDark ? "bg-white/5" : "bg-slate-100"}`} role="group" aria-label="Chart digit range">
+                {[10, 20, 30, 40, 50].map((count) => <button key={count} type="button" onClick={() => setChartDigits(count)} aria-pressed={chartDigits === count} className={`rounded px-1.5 py-0.5 text-[8px] font-bold ${chartDigits === count ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-indigo-400"}`}>{count}</button>)}
+              </div>
+            </div>
+            <LastDigitsLineChart digits={snapshot.digits.slice(-chartDigits)} />
             <div className="mt-2 grid grid-cols-3 gap-1 text-[9px]"><Stat label="Over" value={`${stats.over}%`} /><Stat label="Under" value={`${stats.under}%`} /><Stat label="Even" value={`${stats.even}%`} /><Stat label="Odd" value={`${stats.odd}%`} /><Stat label="Differs" value={`${stats.differs}%`} /><Stat label="Samples" value={String(snapshot.digits.length)} /></div>
           </article>
         })}
@@ -181,7 +196,15 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
-  return <div className="rounded bg-slate-500/10 px-1.5 py-1 text-center"><span className="block text-slate-500">{label}</span><strong>{value}</strong></div>
+  const colors = {
+    Over: "text-amber-400 bg-amber-500/10",
+    Under: "text-cyan-400 bg-cyan-500/10",
+    Even: "text-emerald-400 bg-emerald-500/10",
+    Odd: "text-violet-400 bg-violet-500/10",
+    Differs: "text-rose-400 bg-rose-500/10",
+    Samples: "text-slate-400 bg-slate-500/10",
+  }
+  return <div className={`rounded px-1.5 py-1 text-center ${colors[label as keyof typeof colors]}`}><span className="block text-[8px] uppercase tracking-wide opacity-70">{label}</span><strong className="text-[10px]">{value}</strong></div>
 }
 
 export { MarketsTab }
