@@ -45,6 +45,7 @@ import type { Variants } from 'framer-motion';
 import { ToolsInfoTab } from "@/components/tabs/tools-info-tab"
 import { RiskDisclaimerModal } from "@/components/modals/risk-disclaimer-modal"
 import { MarketSelector } from "@/components/market-selector"
+import { MarketsTab } from "@/components/tabs/markets-tab"
 
 import { FloatingAIScanner } from "@/components/floating-ai-scanner"
 import { LiveChat } from "@/components/live-chat"
@@ -351,6 +352,7 @@ export default function DerivAnalysisApp() {
                     <div className="overflow-x-auto no-scrollbar flex">
                       <ResponsiveTabs theme={theme} value={activeTab} onValueChange={setActiveTab}>
                         {[
+                          "markets",
                           "smart-analysis",
                           "smartauto24",
                           "profit-plus",
@@ -367,6 +369,7 @@ export default function DerivAnalysisApp() {
                           "tools-info",
                         ].filter(tab => !siteConfig?.hiddenTabs?.includes(tab)).map((tab) => {
                           const tabLabels: Record<string, string> = {
+                            "markets": "Markets",
                             "smart-analysis": "Smart Analysis",
                             "smartauto24": "SmartAuto24",
                             "profit-plus": "ProfitPlus",
@@ -383,6 +386,7 @@ export default function DerivAnalysisApp() {
                             "tools-info": "Tools Info"
                           }
                           const tabIcons: Record<string, any> = {
+                            "markets": Activity,
                             "smart-analysis": LineChart,
                             "smartauto24": Sparkles,
                             "profit-plus": TrendingUp,
@@ -561,6 +565,10 @@ export default function DerivAnalysisApp() {
                   Reconnecting to Deriv API... Some data may be delayed.
                 </div>
               )}
+              <TabsContent value="markets" className="mt-0">
+                <MarketsTab theme={theme} availableSymbols={availableSymbols} initialSymbol={symbol} />
+              </TabsContent>
+
               <TabsContent value="smart-analysis" className="mt-0 space-y-2 sm:space-y-3 md:space-y-4">
                 <div
                   className={`rounded-lg sm:rounded-xl p-2 sm:p-3 border flex items-center justify-between ${theme === "dark" ? "bg-linear-to-br from-[#0f1629]/80 to-[#1a2235]/80 border-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.2)]" : "bg-white border-gray-200 shadow-lg"}`}
