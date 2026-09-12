@@ -902,8 +902,6 @@ export class DerivWebSocketManager {
     return this.subscribeTicksInternal(cleanSymbol)
   }
 
-  public async unsubscribe(subscriptionId: string, callback?: (tick: TickData) => void) {
-
   public send(message: any): void {
     if (this.api && this.ws?.readyState === WebSocket.OPEN) {
       // DerivAPIBasic.send() returns a Promise — suppress unhandled rejection for fire-and-forget
