@@ -222,28 +222,23 @@ export default function DerivAnalysisApp() {
                } backdrop-blur-xl`}
           >
             <div className="mx-auto w-full px-2 sm:px-6 lg:px-8">
-              <div className="flex flex-nowrap items-center h-16 sm:h-20 gap-4 sm:gap-6 w-full justify-between overflow-hidden">
+              <div className="flex flex-nowrap items-center h-12 sm:h-14 gap-2 sm:gap-4 w-full justify-between overflow-hidden">
 
                 {/* Brand Name - Profithub Logo */}
-                <div className="flex items-center shrink-0 gap-2.5 sm:min-w-[220px]">
-                  <div className={`p-2 rounded-xl flex items-center justify-center shrink-0 ${theme === "dark" ? "bg-green-500/10" : "bg-green-50"}`}>
+                <div className="flex items-center shrink-0 gap-1.5 sm:min-w-0">
+                  <div className={`p-1.5 rounded-lg flex items-center justify-center shrink-0 ${theme === "dark" ? "bg-green-500/10" : "bg-green-50"}`}>
                     <Image
                       src="/logo-profithub.png"
-                      alt="Profithub"
-                      width={24}
-                      height={24}
+                      alt="Profithub Analysis"
+                      width={20}
+                      height={20}
                       style={{ objectFit: "contain" }}
                       priority
                     />
                   </div>
-                  <div className="flex flex-col leading-none">
-                    <h1 className={`text-base sm:text-lg font-black tracking-tight uppercase bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent`}>
-                      Profithub
-                    </h1>
-                    <h2 className={`text-[8px] sm:text-[9px] font-black tracking-[0.25em] opacity-60 uppercase ${theme === "dark" ? "text-green-300" : "text-green-600"}`}>
-                      AI TRADING
-                    </h2>
-                  </div>
+                  <h1 className={`whitespace-nowrap text-sm sm:text-base font-black tracking-tight uppercase bg-gradient-to-r from-green-400 via-emerald-400 to-cyan-400 bg-clip-text text-transparent`}>
+                    Profithub Analysis
+                  </h1>
                 </div>
 
                 <div className="flex-1" />
@@ -254,7 +249,7 @@ export default function DerivAnalysisApp() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className={`h-8 px-3 text-[10px] rounded-lg font-bold flex items-center gap-1.5 transition-all ${theme === "dark"
+                        className={`h-7 px-2 text-[9px] rounded-md font-bold flex items-center gap-1 transition-all ${theme === "dark"
                           ? "bg-slate-800/50 text-slate-300 border border-slate-700/50 hover:bg-blue-600 hover:text-white"
                           : "bg-gray-100 text-slate-700 hover:bg-blue-500 hover:text-white"}`}
                       >
@@ -266,7 +261,7 @@ export default function DerivAnalysisApp() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowRiskModal(true)}
-                      className={`h-8 px-3 text-[10px] rounded-lg font-bold flex items-center gap-1 transition-all ${theme === "dark"
+                      className={`h-7 px-2 text-[9px] rounded-md font-bold flex items-center gap-1 transition-all ${theme === "dark"
                         ? "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/20"
                         : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"}`}
                     >
@@ -278,7 +273,7 @@ export default function DerivAnalysisApp() {
                       variant="ghost"
                       size="icon"
                       onClick={toggleTheme}
-                      className={`h-8 w-8 rounded-lg transition-all ${theme === "dark"
+                      className={`h-7 w-7 rounded-md transition-all ${theme === "dark"
                         ? "bg-white/5 text-yellow-500 hover:bg-white/10"
                         : "bg-black/5 text-slate-700 hover:bg-black/10"
                         }`}
@@ -296,7 +291,7 @@ export default function DerivAnalysisApp() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className={`h-9 w-9 rounded-lg transition-all ${
+                          className={`h-7 w-7 rounded-md transition-all ${
                             theme === "dark" 
                               ? "bg-white/5 text-white hover:bg-white/10" 
                               : "bg-black/5 text-slate-900 hover:bg-black/10"
@@ -347,7 +342,7 @@ export default function DerivAnalysisApp() {
                 </div>
               </div>
 
-              <div className="px-2 sm:px-6 lg:px-8 flex flex-col gap-2 pb-2">
+              <div className="px-2 sm:px-6 lg:px-8 flex flex-col gap-1 pb-1">
                 {/* Navigation Tabs - Clean Design */}
                 <div className="flex items-center justify-start w-full overflow-x-auto no-scrollbar -mx-2 sm:-mx-6 lg:-mx-8 px-2 sm:px-6 lg:px-8 py-1">
                   <div className={`inline-flex rounded-xl border transition-all duration-500 p-0.5 gap-0.5 ${theme === "dark" 
