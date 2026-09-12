@@ -143,8 +143,8 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
   const isDark = theme === "dark"
 
   return (
-    <section className="w-full min-w-0 space-y-3" aria-label="Live markets analytics">
-      <div className={`flex flex-col gap-3 rounded-xl border p-3 xl:flex-row xl:items-center xl:justify-between ${isDark ? "border-white/10 bg-slate-950/70" : "border-slate-200 bg-white"}`}>
+    <section className="w-full min-w-0 space-y-4" aria-label="Live markets analytics">
+      <div className={`flex flex-col gap-3 rounded-2xl border p-3 shadow-sm xl:flex-row xl:items-center xl:justify-between ${isDark ? "border-white/10 bg-[#0b1020]/90 shadow-black/20" : "border-slate-200 bg-white"}`}>
         <div className="flex min-w-0 items-center gap-2">
           <div className="rounded-lg bg-indigo-500/15 p-2 text-indigo-400"><Zap className="h-4 w-4" /></div>
           <div><h2 className="text-sm font-bold">Live Markets</h2><p className="text-[10px] text-slate-500">Select markets for real-time digit analytics</p></div>
@@ -160,10 +160,10 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
         </div>
       </div>
 
-      {showMarketPicker && <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8">
+      {showMarketPicker && <div className={`grid grid-cols-2 gap-2 pb-1 xl:flex xl:flex-nowrap xl:overflow-x-auto ${isDark ? "scrollbar-dark" : ""}`}>
         {visibleSymbols.map((item) => {
           const active = selected.has(item.symbol)
-          return <button key={item.symbol} type="button" onClick={() => toggle(item.symbol)} className={`flex items-center gap-2 rounded-lg border px-2 py-2 text-left transition-colors ${active ? "border-indigo-500/60 bg-indigo-500/10" : isDark ? "border-white/8 bg-white/[0.02]" : "border-slate-200 bg-white"}`}>
+          return <button key={item.symbol} type="button" onClick={() => toggle(item.symbol)} className={`flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors xl:min-w-[150px] xl:shrink-0 ${active ? "border-indigo-500/60 bg-indigo-500/10" : isDark ? "border-white/8 bg-white/[0.02]" : "border-slate-200 bg-white"}`}>
             <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${active ? "border-indigo-500 bg-indigo-600 text-white" : "border-slate-500"}`}>{active && <Check className="h-3 w-3" />}</span>
             <span className="min-w-0 truncate text-[10px] font-bold">{item.display_name || item.symbol}</span>
           </button>
@@ -176,10 +176,10 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
           if (!item) return null
           const snapshot = snapshots[symbol] || { price: null, digits: [], tickCount: 0, updatedAt: 0 }
           const stats = getStats(snapshot.digits)
-          return <article key={symbol} className={`min-w-0 overflow-hidden rounded-xl border p-3 ${isDark ? "border-white/10 bg-slate-950/60" : "border-slate-200 bg-white"}`}>
-            <div className="mb-2 flex items-center justify-between"><div><h3 className="text-xs font-bold">{item.display_name}</h3><p className="text-[9px] text-slate-500">{item.symbol} · {snapshot.tickCount} ticks</p></div><button type="button" onClick={() => toggle(symbol)} className="text-[10px] text-slate-500 hover:text-red-400">Remove</button></div>
-            <div className="mb-2 grid grid-cols-2 gap-2"><div className="rounded-md bg-indigo-500/10 p-2"><p className="text-[9px] uppercase text-slate-500">Price</p><p className="font-mono text-sm font-bold text-indigo-400">{snapshot.price === null ? "—" : snapshot.price}</p></div><div className="rounded-md bg-emerald-500/10 p-2"><p className="text-[9px] uppercase text-slate-500">Last digit</p><p className="font-mono text-sm font-bold text-emerald-400">{snapshot.digits.at(-1) ?? "—"}</p></div></div>
-            <div className="mb-1 flex items-center justify-between">
+          return <article key={symbol} className={`min-w-0 overflow-hidden rounded-2xl border p-3 shadow-sm ${isDark ? "border-white/10 bg-[#0b1020]/80 shadow-black/20" : "border-slate-200 bg-white"}`}>
+            <div className="mb-3 flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-sm font-bold tracking-tight">{item.display_name}</h3><p className="mt-0.5 text-[9px] font-medium uppercase tracking-wider text-slate-500">{item.symbol} · {snapshot.tickCount} ticks</p></div><button type="button" onClick={() => toggle(symbol)} className="text-[10px] text-slate-500 hover:text-red-400">Remove</button></div>
+            <div className="mb-3 grid grid-cols-2 gap-2"><div className="rounded-lg border border-indigo-400/10 bg-indigo-500/10 p-2.5"><p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Price</p><p className="mt-0.5 font-mono text-base font-bold text-indigo-400">{snapshot.price === null ? "—" : snapshot.price}</p></div><div className="rounded-lg border border-emerald-400/10 bg-emerald-500/10 p-2.5"><p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Last digit</p><p className="mt-0.5 font-mono text-base font-bold text-emerald-400">{snapshot.digits.at(-1) ?? "—"}</p></div></div>
+            <div className="mb-1.5 flex items-center justify-between">
               <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">Last digits</span>
               <div className={`flex gap-0.5 rounded-md p-0.5 ${isDark ? "bg-white/5" : "bg-slate-100"}`} role="group" aria-label="Chart digit range">
                 {[10, 20, 30, 40, 50].map((count) => <button key={count} type="button" onClick={() => setChartDigits(count)} aria-pressed={chartDigits === count} className={`rounded px-1.5 py-0.5 text-[8px] font-bold ${chartDigits === count ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-indigo-400"}`}>{count}</button>)}
