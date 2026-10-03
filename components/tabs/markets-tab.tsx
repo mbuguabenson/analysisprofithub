@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Check, CheckSquare, ChevronDown, ChevronUp, Square, Zap } from "lucide-react"
+import { Check, CheckSquare, ChevronDown, ChevronUp, Settings2, Square, Zap } from "lucide-react"
 import { DerivWebSocketManager } from "@/lib/deriv-websocket-manager"
 import type { TickData } from "@/lib/analysis-engine"
 import type { DerivSymbol } from "@/hooks/use-deriv"
@@ -54,16 +54,25 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
   const [snapshots, setSnapshots] = useState<Record<string, MarketSnapshot>>({})
   const snapshotsRef = useRef<Record<string, MarketSnapshot>>({})
   const [search, setSearch] = useState("")
-  const [showMarketPicker, setShowMarketPicker] = useState(true)
+  const [showMarketPicker, setShowMarketPicker] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [marketShortcut, setMarketShortcut] = useState<"all" | "1s" | "plain" | "jump" | "manual">("all")
   const [chartDigits, setChartDigits] = useState(10)
   const [activeSymbol, setActiveSymbol] = useState(initialSymbol || availableSymbols[0]?.symbol || "")
   const [analysisView, setAnalysisView] = useState<"overview" | "digits" | "over-under" | "even-odd" | "differs">("overview")
 
   const supportedSymbols = useMemo(() => availableSymbols, [availableSymbols])
+  const shortcutSymbols = useMemo(() => supportedSymbols.filter((item) => {
+    const name = `${item.display_name} ${item.symbol} ${item.market_display_name || ""}`.toLowerCase()
+    if (marketShortcut === "1s") return /1s|one second|continuous/i.test(name)
+    if (marketShortcut === "plain") return /volatility|^r_|regular/i.test(name) && !/jump/i.test(name)
+    if (marketShortcut === "jump") return /jump/i.test(name)
+    return true
+  }), [supportedSymbols, marketShortcut])
   const visibleSymbols = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return supportedSymbols.filter((item) => !query || `${item.display_name} ${item.symbol} ${item.market_display_name || ""}`.toLowerCase().includes(query))
-  }, [supportedSymbols, search])
+    return (marketShortcut === "manual" ? supportedSymbols : shortcutSymbols).filter((item) => !query || `${item.display_name} ${item.symbol} ${item.market_display_name || ""}`.toLowerCase().includes(query))
+  }, [supportedSymbols, shortcutSymbols, search, marketShortcut])
 
   useEffect(() => {
     managerRef.current = DerivWebSocketManager.getInstance()
@@ -137,7 +146,7 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
     })
   }
 
-  const selectAll = () => setSelected(new Set(supportedSymbols.map((item) => item.symbol)))
+  const selectAll = () => setSelected(new Set(visibleSymbols.map((item) => item.symbol)))
   const clearAll = () => setSelected(new Set())
   const isDark = theme === "dark"
 
@@ -152,14 +161,24 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search markets" className={`h-8 w-40 rounded-md border px-2 text-xs outline-none ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50"}`} />
           <button type="button" onClick={selectAll} className="flex h-8 items-center gap-1 rounded-md bg-indigo-600 px-2 text-[10px] font-bold text-white"><CheckSquare className="h-3.5 w-3.5" />All</button>
           <button type="button" onClick={clearAll} className={`flex h-8 items-center gap-1 rounded-md border px-2 text-[10px] font-bold ${isDark ? "border-white/10 text-slate-300" : "border-slate-200 text-slate-600"}`}><Square className="h-3.5 w-3.5" />Clear</button>
-          <span className="text-[10px] font-semibold text-slate-500">{selected.size} selected</span>
-          <button type="button" onClick={() => setShowMarketPicker((visible) => !visible)} className={`flex h-8 items-center gap-1 rounded-md border px-2 text-[10px] font-bold ${isDark ? "border-white/10 text-slate-300" : "border-slate-200 text-slate-600"}`} aria-expanded={showMarketPicker}>
-            {showMarketPicker ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />} Markets
+          <span className="text-[10px] font-semibold text-slate-500">{selected.size} added</span>
+          <button type="button" onClick={() => setShowSettings((visible) => !visible)} className={`flex h-8 items-center gap-1 rounded-md border px-2 text-[10px] font-bold ${showSettings ? "border-indigo-500/60 bg-indigo-500/10 text-indigo-300" : isDark ? "border-white/10 text-slate-300" : "border-slate-200 text-slate-600"}`} aria-expanded={showSettings}>
+            <Settings2 className="h-3.5 w-3.5" /> Settings
           </button>
         </div>
       </div>
 
-      {showMarketPicker && <div className={`grid grid-cols-2 gap-2 pb-1 xl:flex xl:flex-nowrap xl:overflow-x-auto ${isDark ? "scrollbar-dark" : ""}`}>
+      {showSettings && <div className={`rounded-xl border p-3 ${isDark ? "border-white/10 bg-[#0b1020]/90" : "border-slate-200 bg-white"}`}>
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Market shortcuts</span>
+          {([["all", "All markets"], ["1s", "1s markets"], ["plain", "Plain indices"], ["jump", "Jump indices"], ["manual", "Choose manually"]] as const).map(([value, label]) => <button key={value} type="button" onClick={() => { setMarketShortcut(value); setShowMarketPicker(true) }} className={`rounded-md px-2 py-1.5 text-[9px] font-bold transition-colors ${marketShortcut === value ? "bg-indigo-600 text-white" : isDark ? "bg-white/5 text-slate-400 hover:text-white" : "bg-slate-100 text-slate-600 hover:text-indigo-600"}`}>{label}</button>)}
+        </div>
+        <p className="text-[9px] text-slate-500">Choose markets below to add them to the live analysis board.</p>
+      </div>}
+
+      {showMarketPicker && <div className={`rounded-xl border p-2 ${isDark ? "border-white/10 bg-white/[0.02]" : "border-slate-200 bg-slate-50"}`}>
+        <div className="mb-2 flex items-center justify-between"><span className="text-[10px] font-bold text-slate-500">Available markets</span><button type="button" onClick={() => setShowMarketPicker(false)} className="text-[9px] font-semibold text-indigo-400">Done</button></div>
+        <div className={`grid grid-cols-2 gap-2 xl:grid-cols-6 ${isDark ? "scrollbar-dark" : ""}`}>
         {visibleSymbols.map((item) => {
           const active = selected.has(item.symbol)
           return <button key={item.symbol} type="button" onClick={() => toggle(item.symbol)} className={`flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors xl:min-w-[150px] xl:shrink-0 ${active ? "border-indigo-500/60 bg-indigo-500/10" : isDark ? "border-white/8 bg-white/[0.02]" : "border-slate-200 bg-white"}`}>
@@ -167,6 +186,7 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
             <span className="min-w-0 truncate text-[10px] font-bold">{item.display_name || item.symbol}</span>
           </button>
         })}
+        </div>
       </div>}
 
       <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-8">
