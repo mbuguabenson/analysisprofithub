@@ -56,11 +56,10 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
   const [search, setSearch] = useState("")
   const [showMarketPicker, setShowMarketPicker] = useState(true)
   const [chartDigits, setChartDigits] = useState(10)
+  const [activeSymbol, setActiveSymbol] = useState(initialSymbol || availableSymbols[0]?.symbol || "")
+  const [analysisView, setAnalysisView] = useState<"overview" | "digits" | "over-under" | "even-odd" | "differs">("overview")
 
-  const supportedSymbols = useMemo(
-    () => availableSymbols.filter((item) => /volatility|jump|^r_/i.test(`${item.display_name} ${item.symbol}`)),
-    [availableSymbols],
-  )
+  const supportedSymbols = useMemo(() => availableSymbols, [availableSymbols])
   const visibleSymbols = useMemo(() => {
     const query = search.trim().toLowerCase()
     return supportedSymbols.filter((item) => !query || `${item.display_name} ${item.symbol} ${item.market_display_name || ""}`.toLowerCase().includes(query))
@@ -170,13 +169,31 @@ export default function MarketsTab({ theme, availableSymbols, initialSymbol }: M
         })}
       </div>}
 
+      <div className="grid min-w-0 grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-8">
+        {supportedSymbols.map((item) => {
+          const active = selected.has(item.symbol)
+          return <button key={item.symbol} type="button" onClick={() => { toggle(item.symbol); setActiveSymbol(item.symbol) }} className={`min-w-0 rounded-lg border px-2 py-1.5 text-left transition-colors ${active ? "border-indigo-500/60 bg-indigo-500/10" : isDark ? "border-white/8 bg-white/[0.02]" : "border-slate-200 bg-white"}`}>
+            <div className="flex items-center gap-1.5"><span className={`h-2 w-2 shrink-0 rounded-full ${active ? "bg-emerald-400" : "bg-slate-500"}`} /><span className="truncate text-[9px] font-bold">{item.display_name || item.symbol}</span></div>
+            <span className="mt-0.5 block truncate text-[8px] text-slate-500">{item.symbol}</span>
+          </button>
+        })}
+      </div>
+
+      <div className={`rounded-xl border p-2 ${isDark ? "border-white/10 bg-[#0b1020]/80" : "border-slate-200 bg-white"}`}>
+        <div className="mb-2 flex items-center gap-1 overflow-x-auto border-b border-white/10 pb-2">
+          {[['overview', 'Overview'], ['digits', 'Digits'], ['over-under', 'Over/Under'], ['even-odd', 'Even/Odd'], ['differs', 'Differs']].map(([value, label]) => <button key={value} type="button" onClick={() => setAnalysisView(value as typeof analysisView)} className={`shrink-0 rounded-md px-2 py-1 text-[9px] font-bold ${analysisView === value ? "bg-indigo-600 text-white" : "text-slate-500 hover:text-indigo-400"}`}>{label}</button>)}
+        </div>
+        <p className="text-[10px] font-semibold text-slate-500">Smart Analysis · {availableSymbols.find((item) => item.symbol === activeSymbol)?.display_name || "Select a market"}</p>
+      </div>
+
       <div className="grid min-w-0 grid-cols-1 gap-2 xl:grid-cols-2 2xl:grid-cols-2">
         {[...selected].map((symbol) => {
           const item = availableSymbols.find((market) => market.symbol === symbol)
+          const isActiveMarket = activeSymbol === symbol
           if (!item) return null
           const snapshot = snapshots[symbol] || { price: null, digits: [], tickCount: 0, updatedAt: 0 }
           const stats = getStats(snapshot.digits)
-          return <article key={symbol} className={`min-w-0 overflow-hidden rounded-2xl border p-3 shadow-sm ${isDark ? "border-white/10 bg-[#0b1020]/80 shadow-black/20" : "border-slate-200 bg-white"}`}>
+          return <article key={symbol} onClick={() => setActiveSymbol(symbol)} className={`min-w-0 cursor-pointer overflow-hidden rounded-2xl border p-3 shadow-sm ${isActiveMarket ? "ring-1 ring-indigo-500/60" : ""} ${isDark ? "border-white/10 bg-[#0b1020]/80 shadow-black/20" : "border-slate-200 bg-white"}`}>
             <div className="mb-3 flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="truncate text-sm font-bold tracking-tight">{item.display_name}</h3><p className="mt-0.5 text-[9px] font-medium uppercase tracking-wider text-slate-500">{item.symbol} · {snapshot.tickCount} ticks</p></div><button type="button" onClick={() => toggle(symbol)} className="text-[10px] text-slate-500 hover:text-red-400">Remove</button></div>
             <div className="mb-3 grid grid-cols-2 gap-2"><div className="rounded-lg border border-indigo-400/10 bg-indigo-500/10 p-2.5"><p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Price</p><p className="mt-0.5 font-mono text-base font-bold text-indigo-400">{snapshot.price === null ? "—" : snapshot.price}</p></div><div className="rounded-lg border border-emerald-400/10 bg-emerald-500/10 p-2.5"><p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">Last digit</p><p className="mt-0.5 font-mono text-base font-bold text-emerald-400">{snapshot.digits.at(-1) ?? "—"}</p></div></div>
             <div className="mb-1.5 flex items-center justify-between">
