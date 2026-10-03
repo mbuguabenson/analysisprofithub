@@ -389,8 +389,8 @@ export default function DerivAnalysisApp() {
                           return (
                           <TabsTrigger
                             key={tab}
-                            value={tab === "wide-view" ? "smart-analysis" : tab}
-                            className={`shrink-0 rounded-lg text-[9px] sm:text-[11px] h-8 px-2 sm:px-3 whitespace-nowrap transition-all duration-300 font-bold flex items-center gap-1 border-0 ${(activeTab === tab || (tab === "wide-view" && activeTab === "smart-analysis"))}
+                            value={tab}
+                            className={`shrink-0 rounded-lg text-[9px] sm:text-[11px] h-8 px-2 sm:px-3 whitespace-nowrap transition-all duration-300 font-bold flex items-center gap-1 border-0 ${activeTab === tab}
                               ? theme === "dark"
                                 ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
                                 : "bg-indigo-600 text-white shadow-md shadow-indigo-500/10"
@@ -549,6 +549,10 @@ export default function DerivAnalysisApp() {
                 </div>
               )}
               <TabsContent value="markets" className="mt-0">
+                <MarketsTab theme={theme} availableSymbols={availableSymbols} initialSymbol={symbol} />
+              </TabsContent>
+
+              <TabsContent value="wide-view" className="mt-0">
                 <MarketsTab theme={theme} availableSymbols={availableSymbols} initialSymbol={symbol} />
               </TabsContent>
 
