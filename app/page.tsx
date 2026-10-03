@@ -340,7 +340,6 @@ export default function DerivAnalysisApp() {
                         {[
                           "markets",
                           "smart-analysis",
-                          "wide-view",
                           "smartauto24",
                           "autobot",
                           "automated",
@@ -356,7 +355,6 @@ export default function DerivAnalysisApp() {
                           const tabLabels: Record<string, string> = {
                             "markets": "Markets",
                             "smart-analysis": "Smart Analysis",
-                            "wide-view": "Wide View",
                             "smartauto24": "SmartAuto24",
                             "autobot": "Auto Bot",
                             "automated": "Automated",
@@ -372,7 +370,6 @@ export default function DerivAnalysisApp() {
                           const tabIcons: Record<string, any> = {
                             "markets": Activity,
                             "smart-analysis": LineChart,
-                            "wide-view": LineChart,
                             "smartauto24": Sparkles,
                             "autobot": Cpu,
                             "automated": Terminal,
@@ -389,8 +386,8 @@ export default function DerivAnalysisApp() {
                           return (
                           <TabsTrigger
                             key={tab}
-                            value={tab === "wide-view" ? "smart-analysis" : tab}
-                            className={`shrink-0 rounded-lg text-[9px] sm:text-[11px] h-8 px-2 sm:px-3 whitespace-nowrap transition-all duration-300 font-bold flex items-center gap-1 border-0 ${(activeTab === tab || (tab === "wide-view" && activeTab === "smart-analysis"))
+                            value={tab}
+                            className={`shrink-0 rounded-lg text-[9px] sm:text-[11px] h-8 px-2 sm:px-3 whitespace-nowrap transition-all duration-300 font-bold flex items-center gap-1 border-0 ${activeTab === tab}
                               ? theme === "dark"
                                 ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
                                 : "bg-indigo-600 text-white shadow-md shadow-indigo-500/10"
